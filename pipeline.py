@@ -8,19 +8,6 @@ from network import RRDBNet
 
 
 class RealESRGANer():
-    """A helper class for upsampling images with RealESRGAN.
-
-    Args:
-        scale (int): Upsampling scale factor used in the networks. It is usually 2 or 4.
-        model_path (str): The path to the pretrained model. It can be urls (will first download it automatically).
-        model (nn.Module): The defined network. Default: None.
-        tile (int): As too large images result in the out of GPU memory issue, so this tile option will first crop
-            input images into tiles, and then process each of them. Finally, they will be merged into one image.
-            0 denotes for do not use tile. Default: 0.
-        tile_pad (int): The pad size for each tile, to remove border artifacts. Default: 10.
-        pre_pad (int): Pad the input images to avoid border artifacts. Default: 10.
-        half (float): Whether to use half precision during inference. Default: False.
-    """
 
     def __init__(self,
                  scale,
@@ -36,51 +23,25 @@ class RealESRGANer():
         self.tile_pad = tile_pad
         self.pre_pad = pre_pad
         self.mod_scale = None
-        self.half = half
 
         # initialize model
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') if device is None else device
 
-        # if isinstance(model_path, list):
-        #     # dni
-        #     assert len(model_path) == len(dni_weight), 'model_path and dni_weight should have the save length.'
-        #     loadnet = self.dni(model_path[0], model_path[1], dni_weight)
-        # else:
-        #     # if the model_path starts with https, it will first download models to the folder: weights
-        #     assert not model_path.startswith('https://')
         loadnet = torch.load(model_path, map_location=torch.device('cpu'))
 
-        # prefer to use params_ema
-        if 'params_ema' in loadnet:
-            keyname = 'params_ema'
-        else:
-            keyname = 'params'
-        model.load_state_dict(loadnet[keyname], strict=True)
+
+        model.load_state_dict(loadnet['params_ema'], strict=True)
 
         model.eval()
         self.model = model.to(self.device)
-        if self.half:
-            self.model = self.model.half()
 
-    def dni(self, net_a, net_b, dni_weight, key='params', loc='cpu'):
-        """Deep network interpolation.
-
-        ``Paper: Deep Network Interpolation for Continuous Imagery Effect Transition``
-        """
-        net_a = torch.load(net_a, map_location=torch.device(loc))
-        net_b = torch.load(net_b, map_location=torch.device(loc))
-        for k, v_a in net_a[key].items():
-            net_a[key][k] = dni_weight[0] * v_a + dni_weight[1] * net_b[key][k]
-        return net_a
 
     def pre_process(self, img):
         """Pre-process, such as pre-pad and mod pad, so that the images can be divisible
         """
         img = torch.from_numpy(np.transpose(img, (2, 0, 1))).float()
         self.img = img.unsqueeze(0).to(self.device)
-        if self.half:
-            self.img = self.img.half()
 
         # pre_pad
         if self.pre_pad != 0:
@@ -257,7 +218,6 @@ model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_c
 tile = 0
 tile_pad = 10
 pre_pad = 0
-fp32 = None
 outscale = 4
 
 
@@ -268,8 +228,7 @@ upsampler = RealESRGANer(
     model=model,
     tile=tile,
     tile_pad=tile_pad,
-    pre_pad=pre_pad,
-    half=not fp32)
+    pre_pad=pre_pad)
 
 
 input_path = "./input/0014.jpg"
