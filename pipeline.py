@@ -25,14 +25,12 @@ class RealESRGANer():
     def __init__(self,
                  scale,
                  model_path,
-                 dni_weight=None,
                  model=None,
                  tile=0,
                  tile_pad=10,
                  pre_pad=10,
                  half=False,
-                 device=None,
-                 gpu_id=None):
+                 device=None):
         self.scale = scale
         self.tile_size = tile
         self.tile_pad = tile_pad
@@ -253,10 +251,8 @@ class RealESRGANer():
 
         return output, img_mode
 
-gpu_id = None
 netscale = 4
 model_path = "./weights/RealESRGAN_x4plus.pth"
-dni_weight = None
 model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
 tile = 0
 tile_pad = 10
@@ -269,13 +265,11 @@ outscale = 4
 upsampler = RealESRGANer(
     scale=netscale,
     model_path=model_path,
-    dni_weight=dni_weight,
     model=model,
     tile=tile,
     tile_pad=tile_pad,
     pre_pad=pre_pad,
-    half=not fp32,
-    gpu_id=gpu_id)
+    half=not fp32)
 
 
 input_path = "./input/0014.jpg"
