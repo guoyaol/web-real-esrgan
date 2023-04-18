@@ -13,14 +13,9 @@ class RealESRGANer():
                  scale,
                  model_path,
                  model=None,
-                 tile=0,
-                 tile_pad=10,
                  pre_pad=10,
-                 half=False,
                  device=None):
         self.scale = scale
-        self.tile_size = tile
-        self.tile_pad = tile_pad
         self.pre_pad = pre_pad
         self.mod_scale = None
 
@@ -64,71 +59,6 @@ class RealESRGANer():
         # model inference
         self.output = self.model(self.img)
 
-    def tile_process(self):
-        """It will first crop input images to tiles, and then process each tile.
-        Finally, all the processed tiles are merged into one images.
-
-        Modified from: https://github.com/ata4/esrgan-launcher
-        """
-        batch, channel, height, width = self.img.shape
-        output_height = height * self.scale
-        output_width = width * self.scale
-        output_shape = (batch, channel, output_height, output_width)
-
-        # start with black image
-        self.output = self.img.new_zeros(output_shape)
-        tiles_x = math.ceil(width / self.tile_size)
-        tiles_y = math.ceil(height / self.tile_size)
-
-        # loop over all tiles
-        for y in range(tiles_y):
-            for x in range(tiles_x):
-                # extract tile from input image
-                ofs_x = x * self.tile_size
-                ofs_y = y * self.tile_size
-                # input tile area on total image
-                input_start_x = ofs_x
-                input_end_x = min(ofs_x + self.tile_size, width)
-                input_start_y = ofs_y
-                input_end_y = min(ofs_y + self.tile_size, height)
-
-                # input tile area on total image with padding
-                input_start_x_pad = max(input_start_x - self.tile_pad, 0)
-                input_end_x_pad = min(input_end_x + self.tile_pad, width)
-                input_start_y_pad = max(input_start_y - self.tile_pad, 0)
-                input_end_y_pad = min(input_end_y + self.tile_pad, height)
-
-                # input tile dimensions
-                input_tile_width = input_end_x - input_start_x
-                input_tile_height = input_end_y - input_start_y
-                tile_idx = y * tiles_x + x + 1
-                input_tile = self.img[:, :, input_start_y_pad:input_end_y_pad, input_start_x_pad:input_end_x_pad]
-
-                # upscale tile
-                try:
-                    with torch.no_grad():
-                        output_tile = self.model(input_tile)
-                except RuntimeError as error:
-                    print('Error', error)
-                print(f'\tTile {tile_idx}/{tiles_x * tiles_y}')
-
-                # output tile area on total image
-                output_start_x = input_start_x * self.scale
-                output_end_x = input_end_x * self.scale
-                output_start_y = input_start_y * self.scale
-                output_end_y = input_end_y * self.scale
-
-                # output tile area without padding
-                output_start_x_tile = (input_start_x - input_start_x_pad) * self.scale
-                output_end_x_tile = output_start_x_tile + input_tile_width * self.scale
-                output_start_y_tile = (input_start_y - input_start_y_pad) * self.scale
-                output_end_y_tile = output_start_y_tile + input_tile_height * self.scale
-
-                # put tile into output image
-                self.output[:, :, output_start_y:output_end_y,
-                            output_start_x:output_end_x] = output_tile[:, :, output_start_y_tile:output_end_y_tile,
-                                                                       output_start_x_tile:output_end_x_tile]
-
     def post_process(self):
         # remove extra pad
         if self.mod_scale is not None:
@@ -167,10 +97,9 @@ class RealESRGANer():
 
         # ------------------- process image (without the alpha channel) ------------------- #
         self.pre_process(img)
-        if self.tile_size > 0:
-            self.tile_process()
-        else:
-            self.process()
+
+        self.process()
+
         output_img = self.post_process()
         output_img = output_img.data.squeeze().float().cpu().clamp_(0, 1).numpy()
         output_img = np.transpose(output_img[[2, 1, 0], :, :], (1, 2, 0))
@@ -181,10 +110,10 @@ class RealESRGANer():
         if img_mode == 'RGBA':
             if alpha_upsampler == 'realesrgan':
                 self.pre_process(alpha)
-                if self.tile_size > 0:
-                    self.tile_process()
-                else:
-                    self.process()
+
+
+                self.process()
+
                 output_alpha = self.post_process()
                 output_alpha = output_alpha.data.squeeze().float().cpu().clamp_(0, 1).numpy()
                 output_alpha = np.transpose(output_alpha[[2, 1, 0], :, :], (1, 2, 0))
@@ -215,8 +144,6 @@ class RealESRGANer():
 netscale = 4
 model_path = "./weights/RealESRGAN_x4plus.pth"
 model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
-tile = 0
-tile_pad = 10
 pre_pad = 0
 outscale = 4
 
@@ -226,8 +153,6 @@ upsampler = RealESRGANer(
     scale=netscale,
     model_path=model_path,
     model=model,
-    tile=tile,
-    tile_pad=tile_pad,
     pre_pad=pre_pad)
 
 
