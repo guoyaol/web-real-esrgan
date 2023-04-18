@@ -13,10 +13,8 @@ class RealESRGANer():
                  scale,
                  model_path,
                  model=None,
-                 pre_pad=10,
                  device=None):
         self.scale = scale
-        self.pre_pad = pre_pad
         self.mod_scale = None
 
         # initialize model
@@ -38,9 +36,7 @@ class RealESRGANer():
         img = torch.from_numpy(np.transpose(img, (2, 0, 1))).float()
         self.img = img.unsqueeze(0).to(self.device)
 
-        # pre_pad
-        if self.pre_pad != 0:
-            self.img = F.pad(self.img, (0, self.pre_pad, 0, self.pre_pad), 'reflect')
+
         # mod pad for divisible borders
         if self.scale == 2:
             self.mod_scale = 2
@@ -65,9 +61,6 @@ class RealESRGANer():
             _, _, h, w = self.output.size()
             self.output = self.output[:, :, 0:h - self.mod_pad_h * self.scale, 0:w - self.mod_pad_w * self.scale]
         # remove prepad
-        if self.pre_pad != 0:
-            _, _, h, w = self.output.size()
-            self.output = self.output[:, :, 0:h - self.pre_pad * self.scale, 0:w - self.pre_pad * self.scale]
         return self.output
 
     @torch.no_grad()
@@ -144,7 +137,6 @@ class RealESRGANer():
 netscale = 4
 model_path = "./weights/RealESRGAN_x4plus.pth"
 model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
-pre_pad = 0
 outscale = 4
 
 
@@ -152,12 +144,11 @@ outscale = 4
 upsampler = RealESRGANer(
     scale=netscale,
     model_path=model_path,
-    model=model,
-    pre_pad=pre_pad)
+    model=model)
 
 
-input_path = "./input/0014.jpg"
-output_path = "output"
+input_path = "./input/OST_009.png"
+output_path = "./output"
 
 imgname, extension = os.path.splitext(os.path.basename(input_path))
 
@@ -168,7 +159,12 @@ if len(img.shape) == 3 and img.shape[2] == 4:
 else:
     img_mode = None
 
+
+
+
 output, _ = upsampler.enhance(img, outscale=outscale)
+
+
 
 
 extension = extension[1:]
