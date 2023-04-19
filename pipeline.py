@@ -16,7 +16,7 @@ outscale = 4
 
 
 
-input_path = "./input/0014.jpg"
+input_path = "./input/OST_009.png"
 output_path = "./output"
 
 imgname, extension = os.path.splitext(os.path.basename(input_path))
@@ -37,87 +37,87 @@ model.load_state_dict(loadnet['params_ema'], strict=True)
 model.to(device)
 model.eval()
 
+with torch.no_grad():
+    alpha_upsampler='realesrgan'
+    h_input, w_input = img.shape[0:2]
+    # img: numpy
+    img = img.astype(np.float32)
+    if np.max(img) > 256:  # 16-bit image
+        max_range = 65535
+        print('\tInput is a 16-bit image')
+    else:
+        max_range = 255
+    img = img / max_range
+    if len(img.shape) == 2:  # gray image
+        img_mode = 'L'
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+    elif img.shape[2] == 4:  # RGBA image with alpha channel
+        img_mode = 'RGBA'
+        alpha = img[:, :, 3]
+        img = img[:, :, 0:3]
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        if alpha_upsampler == 'realesrgan':
+            alpha = cv2.cvtColor(alpha, cv2.COLOR_GRAY2RGB)
+    else:
+        img_mode = 'RGB'
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-alpha_upsampler='realesrgan'
-h_input, w_input = img.shape[0:2]
-# img: numpy
-img = img.astype(np.float32)
-if np.max(img) > 256:  # 16-bit image
-    max_range = 65535
-    print('\tInput is a 16-bit image')
-else:
-    max_range = 255
-img = img / max_range
-if len(img.shape) == 2:  # gray image
-    img_mode = 'L'
-    img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-elif img.shape[2] == 4:  # RGBA image with alpha channel
-    img_mode = 'RGBA'
-    alpha = img[:, :, 3]
-    img = img[:, :, 0:3]
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    if alpha_upsampler == 'realesrgan':
-        alpha = cv2.cvtColor(alpha, cv2.COLOR_GRAY2RGB)
-else:
-    img_mode = 'RGB'
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    #preprocess image
+    def preprocess(img, device):
+        img = torch.from_numpy(np.transpose(img, (2, 0, 1))).float()
+        img = img.unsqueeze(0).to(device)
+        return img
 
-#preprocess image
-def preprocess(img, device):
-    img = torch.from_numpy(np.transpose(img, (2, 0, 1))).float()
-    img = img.unsqueeze(0).to(device)
-    return img
+    img = preprocess(img, device)
 
-img = preprocess(img, device)
-
-#model inference
-output_img = model(img)
-
-
-#post process
-
-output_img = output_img.data.squeeze().float().cpu().clamp_(0, 1).numpy()
-output_img = np.transpose(output_img[[2, 1, 0], :, :], (1, 2, 0))
-if img_mode == 'L':
-    output_img = cv2.cvtColor(output_img, cv2.COLOR_BGR2GRAY)
-
-# ------------------- process the alpha channel if necessary ------------------- #
-if img_mode == 'RGBA':
-    if alpha_upsampler == 'realesrgan':
-        alpha = preprocess(alpha, device)
-
-        output_alpha = model(alpha)
-
-        output_alpha = output_alpha.data.squeeze().float().cpu().clamp_(0, 1).numpy()
-        output_alpha = np.transpose(output_alpha[[2, 1, 0], :, :], (1, 2, 0))
-        output_alpha = cv2.cvtColor(output_alpha, cv2.COLOR_BGR2GRAY)
-
-    # merge the alpha channel
-    output_img = cv2.cvtColor(output_img, cv2.COLOR_BGR2BGRA)
-    output_img[:, :, 3] = output_alpha
-
-# ------------------------------ return ------------------------------ #
-if max_range == 65535:  # 16-bit image
-    output = (output_img * 65535.0).round().astype(np.uint16)
-else:
-    output = (output_img * 255.0).round().astype(np.uint8)
-
-if outscale is not None and outscale != float(netscale):
-    output = cv2.resize(
-        output, (
-            int(w_input * outscale),
-            int(h_input * outscale),
-        ), interpolation=cv2.INTER_LANCZOS4)
+    #model inference
+    output_img = model(img)
 
 
+    #post process
+
+    output_img = output_img.data.squeeze().float().cpu().clamp_(0, 1).numpy()
+    output_img = np.transpose(output_img[[2, 1, 0], :, :], (1, 2, 0))
+    if img_mode == 'L':
+        output_img = cv2.cvtColor(output_img, cv2.COLOR_BGR2GRAY)
+
+    # ------------------- process the alpha channel if necessary ------------------- #
+    if img_mode == 'RGBA':
+        if alpha_upsampler == 'realesrgan':
+            alpha = preprocess(alpha, device)
+
+            output_alpha = model(alpha)
+
+            output_alpha = output_alpha.data.squeeze().float().cpu().clamp_(0, 1).numpy()
+            output_alpha = np.transpose(output_alpha[[2, 1, 0], :, :], (1, 2, 0))
+            output_alpha = cv2.cvtColor(output_alpha, cv2.COLOR_BGR2GRAY)
+
+        # merge the alpha channel
+        output_img = cv2.cvtColor(output_img, cv2.COLOR_BGR2BGRA)
+        output_img[:, :, 3] = output_alpha
+
+    # ------------------------------ return ------------------------------ #
+    if max_range == 65535:  # 16-bit image
+        output = (output_img * 65535.0).round().astype(np.uint16)
+    else:
+        output = (output_img * 255.0).round().astype(np.uint8)
+
+    if outscale is not None and outscale != float(netscale):
+        output = cv2.resize(
+            output, (
+                int(w_input * outscale),
+                int(h_input * outscale),
+            ), interpolation=cv2.INTER_LANCZOS4)
 
 
-#save the output image
-extension = extension[1:]
 
-if img_mode == 'RGBA':  # RGBA images should be saved in png format
-    extension = 'png'
 
-save_path = os.path.join(output_path, f'{imgname}.{extension}')
+    #save the output image
+    extension = extension[1:]
 
-cv2.imwrite(save_path, output)
+    if img_mode == 'RGBA':  # RGBA images should be saved in png format
+        extension = 'png'
+
+    save_path = os.path.join(output_path, f'{imgname}.{extension}')
+
+    cv2.imwrite(save_path, output)
