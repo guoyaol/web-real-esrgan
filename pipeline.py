@@ -16,7 +16,7 @@ outscale = 4
 
 
 
-input_path = "./input/OST_009.png"
+input_path = "./input/0014.jpg"
 output_path = "./output"
 
 imgname, extension = os.path.splitext(os.path.basename(input_path))
@@ -101,15 +101,6 @@ with torch.no_grad():
         output = (output_img * 65535.0).round().astype(np.uint16)
     else:
         output = (output_img * 255.0).round().astype(np.uint8)
-
-    if outscale is not None and outscale != float(netscale):
-        output = cv2.resize(
-            output, (
-                int(w_input * outscale),
-                int(h_input * outscale),
-            ), interpolation=cv2.INTER_LANCZOS4)
-
-
 
 
     #save the output image
