@@ -16,7 +16,7 @@ outscale = 4
 
 
 
-input_path = "./input/0014.jpg"
+input_path = "./input/children-alpha.png"
 output_path = "./output"
 
 imgname, extension = os.path.splitext(os.path.basename(input_path))
