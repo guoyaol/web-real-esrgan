@@ -55,8 +55,6 @@ imgname, extension = os.path.splitext(os.path.basename(input_path))
 img = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
 
 
-img_mode = None
-
 
 #1. load model
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -80,7 +78,6 @@ with torch.no_grad():
     img = img / max_range
 
     #3. convert image to RGB, color spcace
-    img_mode = 'RGB'
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
     #4. preprocess image
