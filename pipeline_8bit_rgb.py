@@ -40,7 +40,7 @@ def rrdb_net(model) -> tvm.IRModule:
     rrdb = RRDBNetWrapper(model)
 
     #todo: change size
-    z = torch.rand((1, 3, 128, 128), dtype=torch.float32)
+    z = torch.rand((1, 3, 640, 448), dtype=torch.float32)
 
     mod = dynamo_capture_subgraphs(
         rrdb.forward,
@@ -90,7 +90,6 @@ def preprocess() -> tvm.IRModule:
     return bb.get()
 
 #1. scale image
-print(img)
 img = img.astype(np.float32)
 max_range = 255
 img = img / max_range
@@ -105,47 +104,36 @@ img = img.unsqueeze(0)
 loadnet = torch.load(model_path, map_location=torch.device('cpu'))
 model.load_state_dict(loadnet['params_ema'], strict=True)
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
 mod = rrdb_net(model)
 mod, params = relax.frontend.detach_params(mod)
-# mod.show()
-model.to(device)
-model.eval()
-
-with torch.no_grad():
-    output_img = model(img.to(device))
-
-import GPUtil
-has_gpu = len(GPUtil.getGPUs()) > 0
-
-
-target = tvm.target.Target("cuda" if has_gpu else "llvm")
-device = tvm.cuda() if has_gpu else tvm.cpu()
-
 mod = relax.transform.LegalizeOps()(mod)
 
 ex = relax.build(mod, target= "llvm")
 vm = relax.VirtualMachine(ex, tvm.cpu())
+
+img = tvm.nd.array(img)
 nd_res = vm["rrdb"](img, params)
 print(nd_res)
 
 
-#4. post process
-output_img = output_img.data.squeeze().float().cpu().clamp_(0, 1).numpy()
-output_img = np.transpose(output_img[[2, 1, 0], :, :], (1, 2, 0))
+# #4. post process
+# output_img = output_img.data.squeeze().float().cpu().clamp_(0, 1).numpy()
+# output_img = np.transpose(output_img[[2, 1, 0], :, :], (1, 2, 0))
 
 
-#5. re-scale image
+# #5. re-scale image
 
-output = (output_img * 255.0).round().astype(np.uint8)
-
-
+# output = (output_img * 255.0).round().astype(np.uint8)
 
 
 
-#---------------------save image---------------------
-extension = extension[1:]
 
-save_path = os.path.join(output_path, f'{imgname}.{extension}')
 
-cv2.imwrite(save_path, output)
+# #---------------------save image---------------------
+# extension = extension[1:]
+
+# save_path = os.path.join(output_path, f'{imgname}.{extension}')
+
+# cv2.imwrite(save_path, output)
