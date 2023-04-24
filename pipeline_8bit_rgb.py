@@ -57,12 +57,12 @@ def scale_image() -> tvm.IRModule:
     #todo: different sizes of images
     def f_scale_image(A):
         def fcompute(y, x, c):
-            return A[0, y, x, c] / 255
+            return A[y, x, c] / 255
 
-        return te.compute((1, 640, 448, 3), fcompute, name="scale_image")
+        return te.compute((640, 448, 3), fcompute, name="scale_image")
 
     bb = relax.BlockBuilder()
-    x = relax.Var("x", R.Tensor([1, 640, 448, 3], "float32"))
+    x = relax.Var("x", R.Tensor([640, 448, 3], "float32"))
     with bb.function("scale_image", [x]):
         image = bb.emit(
             bb.call_te(f_scale_image, x, primfunc_name_hint="tir_scale_image")
@@ -70,6 +70,24 @@ def scale_image() -> tvm.IRModule:
         bb.emit_func_output(image)
     return bb.get()
 
+def preprocess() -> tvm.IRModule:
+    from tvm import te
+    #np.transpose(img, (2, 0, 1)) and unqueeze(0)
+    #todo: different sizes of images
+    def f_preprocess(A):
+        def fcompute(i, c, x, y):
+            return A[x, y, c]
+        return te.compute((1, 3, 640, 448), fcompute, name="preprocess")
+
+
+    bb = relax.BlockBuilder()
+    x = relax.Var("x", R.Tensor([640, 448, 3], "float32"))
+    with bb.function("preprocess", [x]):
+        image = bb.emit(
+            bb.call_te(f_preprocess, x, primfunc_name_hint="tir_preprocess")
+        )
+        bb.emit_func_output(image)
+    return bb.get()
 
 #2. scale image
 print(img)
