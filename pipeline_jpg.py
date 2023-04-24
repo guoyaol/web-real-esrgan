@@ -42,16 +42,14 @@ def rrdb_net(model) -> tvm.IRModule:
 
     return tvm.IRModule({"rrdb": mod["subgraph_0"]})
 
-mod = rrdb_net(model)
 
 
 
 
-input_path = "./input/children-alpha.png"
+input_path = "./input/OST_009.png"
 output_path = "./output"
 
 imgname, extension = os.path.splitext(os.path.basename(input_path))
-
 img = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
 
 
@@ -59,52 +57,63 @@ img = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
 #1. load model
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+
+
+alpha_upsampler='realesrgan'
+
+#2. scale image
+h_input, w_input = img.shape[0:2]
+img = img.astype(np.float32)
+if np.max(img) > 256:  # 16-bit image
+    max_range = 65535
+    print('\tInput is a 16-bit image')
+else:
+    max_range = 255
+img = img / max_range
+
+#3. convert image to RGB, color spcace
+img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+#4. preprocess image
+def preprocess(img, device):
+    img = torch.from_numpy(np.transpose(img, (2, 0, 1))).float()
+    img = img.unsqueeze(0).to(device)
+    return img
+
+img = preprocess(img, device)
+
+
+
 loadnet = torch.load(model_path, map_location=torch.device('cpu'))
 model.load_state_dict(loadnet['params_ema'], strict=True)
+
+mod = rrdb_net(model)
+mod, params = relax.frontend.detach_params(mod)
+# mod.show()
 model.to(device)
 model.eval()
 
 with torch.no_grad():
-    alpha_upsampler='realesrgan'
-
-    #2. scale image
-    h_input, w_input = img.shape[0:2]
-    img = img.astype(np.float32)
-    if np.max(img) > 256:  # 16-bit image
-        max_range = 65535
-        print('\tInput is a 16-bit image')
-    else:
-        max_range = 255
-    img = img / max_range
-
-    #3. convert image to RGB, color spcace
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-    #4. preprocess image
-    def preprocess(img, device):
-        img = torch.from_numpy(np.transpose(img, (2, 0, 1))).float()
-        img = img.unsqueeze(0).to(device)
-        return img
-
-    img = preprocess(img, device)
-
-    #5. model inference
+#5. model inference
     output_img = model(img)
 
 
-    #6. post process
-    output_img = output_img.data.squeeze().float().cpu().clamp_(0, 1).numpy()
-    output_img = np.transpose(output_img[[2, 1, 0], :, :], (1, 2, 0))
+#6. post process
+output_img = output_img.data.squeeze().float().cpu().clamp_(0, 1).numpy()
+output_img = np.transpose(output_img[[2, 1, 0], :, :], (1, 2, 0))
 
 
-    #8. un-scale image
-    if max_range == 65535:  # 16-bit image
-        output = (output_img * 65535.0).round().astype(np.uint16)
-    else:
-        output = (output_img * 255.0).round().astype(np.uint8)
+#8. un-scale image
+if max_range == 65535:  # 16-bit image
+    output = (output_img * 65535.0).round().astype(np.uint16)
+else:
+    output = (output_img * 255.0).round().astype(np.uint8)
 
 
-    #9. save the output image
+
+
+
+#---------------------save image---------------------
     extension = extension[1:]
 
     save_path = os.path.join(output_path, f'{imgname}.{extension}')
