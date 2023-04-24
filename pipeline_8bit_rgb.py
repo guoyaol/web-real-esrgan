@@ -51,12 +51,6 @@ def rrdb_net(model) -> tvm.IRModule:
 
 
 
-#1. load model
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-alpha_upsampler='realesrgan'
-
-
 #2. scale image
 h_input, w_input = img.shape[0:2]
 img = img.astype(np.float32)
@@ -69,18 +63,20 @@ img = img / max_range
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 #4. preprocess image
-def preprocess(img, device):
+#1. load model
+def preprocess(img):
     img = torch.from_numpy(np.transpose(img, (2, 0, 1))).float()
-    img = img.unsqueeze(0).to(device)
+    img = img.unsqueeze(0)
     return img
 
-img = preprocess(img, device)
+img = preprocess(img)
 
 
 
 loadnet = torch.load(model_path, map_location=torch.device('cpu'))
 model.load_state_dict(loadnet['params_ema'], strict=True)
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 mod = rrdb_net(model)
 mod, params = relax.frontend.detach_params(mod)
 # mod.show()
@@ -89,7 +85,19 @@ model.eval()
 
 with torch.no_grad():
 #5. model inference
-    output_img = model(img)
+    output_img = model(img.to(device))
+
+# import GPUtil
+# has_gpu = len(GPUtil.getGPUs()) > 0
+
+
+# target = tvm.target.Target("cuda" if has_gpu else "llvm")
+# device = tvm.cuda() if has_gpu else tvm.cpu()
+
+# ex = relax.build(mod, target= "llvm")
+# vm = relax.VirtualMachine(ex, device)
+# nd_res = vm["rrdb"](img, params)
+# print(nd_res)
 
 
 #6. post process
