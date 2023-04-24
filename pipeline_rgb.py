@@ -12,6 +12,13 @@ import torch
 
 
 
+input_path = "./input/OST_009.png"
+output_path = "./output"
+
+imgname, extension = os.path.splitext(os.path.basename(input_path))
+img = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
+
+
 netscale = 4
 model_path = "./weights/RealESRGAN_x4plus.pth"
 model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
@@ -44,22 +51,11 @@ def rrdb_net(model) -> tvm.IRModule:
 
 
 
-
-
-input_path = "./input/OST_009.png"
-output_path = "./output"
-
-imgname, extension = os.path.splitext(os.path.basename(input_path))
-img = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
-
-
-
 #1. load model
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
-
 alpha_upsampler='realesrgan'
+
 
 #2. scale image
 h_input, w_input = img.shape[0:2]
