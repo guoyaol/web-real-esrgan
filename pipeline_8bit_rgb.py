@@ -89,19 +89,19 @@ def preprocess() -> tvm.IRModule:
         bb.emit_func_output(image)
     return bb.get()
 
-#2. scale image
+#1. scale image
 print(img)
 img = img.astype(np.float32)
 max_range = 255
 img = img / max_range
 
 
-#4. preprocess image
+#2. preprocess image
 img = torch.from_numpy(np.transpose(img, (2, 0, 1))).float()
 img = img.unsqueeze(0)
 
 
-
+# 3. model inference
 loadnet = torch.load(model_path, map_location=torch.device('cpu'))
 model.load_state_dict(loadnet['params_ema'], strict=True)
 
@@ -113,28 +113,29 @@ model.to(device)
 model.eval()
 
 with torch.no_grad():
-#5. model inference
     output_img = model(img.to(device))
 
-# import GPUtil
-# has_gpu = len(GPUtil.getGPUs()) > 0
+import GPUtil
+has_gpu = len(GPUtil.getGPUs()) > 0
 
 
-# target = tvm.target.Target("cuda" if has_gpu else "llvm")
-# device = tvm.cuda() if has_gpu else tvm.cpu()
+target = tvm.target.Target("cuda" if has_gpu else "llvm")
+device = tvm.cuda() if has_gpu else tvm.cpu()
 
-# ex = relax.build(mod, target= "llvm")
-# vm = relax.VirtualMachine(ex, device)
-# nd_res = vm["rrdb"](img, params)
-# print(nd_res)
+mod = relax.transform.LegalizeOps()(mod)
+
+ex = relax.build(mod, target= "llvm")
+vm = relax.VirtualMachine(ex, tvm.cpu())
+nd_res = vm["rrdb"](img, params)
+print(nd_res)
 
 
-#6. post process
+#4. post process
 output_img = output_img.data.squeeze().float().cpu().clamp_(0, 1).numpy()
 output_img = np.transpose(output_img[[2, 1, 0], :, :], (1, 2, 0))
 
 
-#8. re-scale image
+#5. re-scale image
 
 output = (output_img * 255.0).round().astype(np.uint8)
 
