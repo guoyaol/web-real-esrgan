@@ -7,6 +7,7 @@ from torch.nn import functional as F
 from network import RRDBNet
 import tvm
 from tvm import relax
+from tvm.script import relax as R
 from tvm.relax.frontend.torch import dynamo_capture_subgraphs
 import torch
 
@@ -17,6 +18,7 @@ output_path = "./output"
 
 imgname, extension = os.path.splitext(os.path.basename(input_path))
 img = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
+img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
 netscale = 4
@@ -49,27 +51,36 @@ def rrdb_net(model) -> tvm.IRModule:
 
     return tvm.IRModule({"rrdb": mod["subgraph_0"]})
 
+def scale_image() -> tvm.IRModule:
+    from tvm import te
+    #divide each element by 255
+    #todo: different sizes of images
+    def f_scale_image(A):
+        def fcompute(y, x, c):
+            return A[0, y, x, c] / 255
+
+        return te.compute((1, 640, 448, 3), fcompute, name="scale_image")
+
+    bb = relax.BlockBuilder()
+    x = relax.Var("x", R.Tensor([1, 640, 448, 3], "float32"))
+    with bb.function("scale_image", [x]):
+        image = bb.emit(
+            bb.call_te(f_scale_image, x, primfunc_name_hint="tir_scale_image")
+        )
+        bb.emit_func_output(image)
+    return bb.get()
 
 
 #2. scale image
-h_input, w_input = img.shape[0:2]
+print(img)
 img = img.astype(np.float32)
-
 max_range = 255
-
 img = img / max_range
 
-#3. convert image to RGB, color spcace
-img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 #4. preprocess image
-#1. load model
-def preprocess(img):
-    img = torch.from_numpy(np.transpose(img, (2, 0, 1))).float()
-    img = img.unsqueeze(0)
-    return img
-
-img = preprocess(img)
+img = torch.from_numpy(np.transpose(img, (2, 0, 1))).float()
+img = img.unsqueeze(0)
 
 
 
@@ -105,7 +116,7 @@ output_img = output_img.data.squeeze().float().cpu().clamp_(0, 1).numpy()
 output_img = np.transpose(output_img[[2, 1, 0], :, :], (1, 2, 0))
 
 
-#8. un-scale image
+#8. re-scale image
 
 output = (output_img * 255.0).round().astype(np.uint8)
 
