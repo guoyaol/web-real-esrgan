@@ -110,8 +110,8 @@ else:
 
 
 #---------------------save image---------------------
-    extension = extension[1:]
+extension = extension[1:]
 
-    save_path = os.path.join(output_path, f'{imgname}.{extension}')
+save_path = os.path.join(output_path, f'{imgname}.{extension}')
 
-    cv2.imwrite(save_path, output)
+cv2.imwrite(save_path, output)
