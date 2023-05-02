@@ -11,6 +11,7 @@ from tvm.script import relax as R
 from tvm.relax.frontend.torch import dynamo_capture_subgraphs
 import torch
 from typing import Dict, List, Tuple
+import time
 
 
 
@@ -111,16 +112,22 @@ mod, params = relax.frontend.detach_params(mod)
 
 mod = relax.transform.LegalizeOps()(mod)
 
-# ex = relax.build(mod, target= "llvm")
-# vm = relax.VirtualMachine(ex, tvm.cpu())
-ex = relax.build(mod, target= "cuda")
-vm = relax.VirtualMachine(ex, tvm.cuda())
+ex = relax.build(mod, target= "llvm")
+vm = relax.VirtualMachine(ex, tvm.cpu())
+# ex = relax.build(mod, target= "cuda")
+# vm = relax.VirtualMachine(ex, tvm.cuda())
 
 img = tvm.nd.array(img)
+
+#record inference time
+start = time.time()
 
 print("start inference")
 nd_res = vm["rrdb"](img, *params['rrdb'])
 print(nd_res)
+
+end = time.time()
+print("inference time in seconds: ", end - start)
 
 
 # #4. post process
