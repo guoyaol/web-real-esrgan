@@ -157,30 +157,27 @@ def postprocess() -> tvm.IRModule:
     return bb.get()
 
 #1. scale image
-img = img.astype(np.float32)
-max_range = 255
-img = img / max_range
+scale = scale_image()
 
 
 #2. preprocess image
-img = torch.from_numpy(np.transpose(img, (2, 0, 1))).float()
-img = img.unsqueeze(0)
+pre_pro = preprocess()
 
 
 # 3. model inference
 loadnet = torch.load(model_path, map_location=torch.device('cpu'))
 model.load_state_dict(loadnet['params_ema'], strict=True)
+rrdb = rrdb_net(model)
+
+rrdb, params = relax.frontend.detach_params(rrdb)
+
+rrdb = relax.transform.LegalizeOps()(rrdb)
 
 
-mod = rrdb_net(model)
-mod, params = relax.frontend.detach_params(mod)
 
-mod = relax.transform.LegalizeOps()(mod)
 
-ex = relax.build(mod, target= "llvm")
+ex = relax.build(rrdb, target= "llvm")
 vm = relax.VirtualMachine(ex, tvm.cpu())
-# ex = relax.build(mod, target= "cuda")
-# vm = relax.VirtualMachine(ex, tvm.cuda())
 
 img = tvm.nd.array(img)
 
@@ -195,14 +192,13 @@ end = time.time()
 print("inference time in seconds: ", end - start)
 
 
-# #4. post process
-# output_img = output_img.data.squeeze().float().cpu().clamp_(0, 1).numpy()
-# output_img = np.transpose(output_img[[2, 1, 0], :, :], (1, 2, 0))
+#4. post process
 
 
-# #5. re-scale image
 
-# output = (output_img * 255.0).round().astype(np.uint8)
+#5. re-scale image
+
+output = (output_img * 255.0).round().astype(np.uint8)
 
 
 
