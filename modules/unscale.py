@@ -53,3 +53,6 @@ img = img.astype(np.float32)
 max_range = 255
 img = img * max_range
 print(img)
+
+np.testing.assert_array_equal(nd_res1.numpy(), img)
+print("test passed")

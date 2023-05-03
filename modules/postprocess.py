@@ -27,7 +27,7 @@ def postprocess() -> tvm.IRModule:
     
     def f_transpose(A):
         def fcompute(x, y, c):
-            return A[c, y, x]
+            return A[c, x, y]
         return te.compute((2560, 1792, 3), fcompute, name="transpose")
     
     def f_max_0(A):
@@ -69,7 +69,7 @@ p_mod = postprocess()
 ex = relax.build(p_mod, target= "llvm")
 vm = relax.VirtualMachine(ex, tvm.cpu())
 
-nd_res1 = vm["postprocess"](img_nd)
+nd_res1 = vm["postprocess"](img_nd).numpy()
 
 print(nd_res1)
 print(nd_res1.shape)
@@ -82,3 +82,6 @@ output_img = np.transpose(output_img[[2, 1, 0], :, :], (1, 2, 0))
 
 print(output_img)
 print(output_img.shape)
+
+np.testing.assert_array_equal(nd_res1, output_img)
+print("test passed")

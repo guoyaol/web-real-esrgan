@@ -62,3 +62,6 @@ img = img.unsqueeze(0)
 print(img)
 print(img.shape)
 
+np.testing.assert_array_equal(nd_res1.numpy(), img.numpy())
+print("test passed")
+
