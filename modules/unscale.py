@@ -28,3 +28,28 @@ def unscale_image() -> tvm.IRModule:
         )
         bb.emit_func_output(image)
     return bb.get()
+
+input_path = "/home/guoyaol/web-real-esrgan/input/OST_009.png"
+
+imgname, extension = os.path.splitext(os.path.basename(input_path))
+img = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
+img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+
+# our result
+img_nd = tvm.nd.array(img.astype("float32"))
+
+u_mod = unscale_image()
+
+ex = relax.build(u_mod, target= "llvm")
+vm = relax.VirtualMachine(ex, tvm.cpu())
+nd_res1 = vm["unscale_image"](img_nd)
+
+print(nd_res1)
+print(type(nd_res1))
+
+# ref result
+img = img.astype(np.float32)
+max_range = 255
+img = img * max_range
+print(img)

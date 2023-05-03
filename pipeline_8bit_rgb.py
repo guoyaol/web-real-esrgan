@@ -91,6 +91,25 @@ def preprocess() -> tvm.IRModule:
         bb.emit_func_output(image)
     return bb.get()
 
+def unscale_image() -> tvm.IRModule:
+    from tvm import te
+    #divide each element by 255
+    #todo: different sizes of images
+    def f_unscale_image(A):
+        def fcompute(y, x, c):
+            return A[y, x, c] * 255
+
+        return te.compute((640, 448, 3), fcompute, name="unscale_image")
+
+    bb = relax.BlockBuilder()
+    x = relax.Var("x", R.Tensor([640, 448, 3], "float32"))
+    with bb.function("unscale_image", [x]):
+        image = bb.emit(
+            bb.call_te(f_unscale_image, x, primfunc_name_hint="tir_unscale_image")
+        )
+        bb.emit_func_output(image)
+    return bb.get()
+
 #1. scale image
 img = img.astype(np.float32)
 max_range = 255
