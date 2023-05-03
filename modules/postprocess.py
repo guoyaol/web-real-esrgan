@@ -18,27 +18,27 @@ def postprocess() -> tvm.IRModule:
     def f_squeeze(A):
         def fcompute(c, x, y):
             return A[0, c, x, y]
-        return te.compute((3, 2560, 1792), fcompute, name="squeeze0")
+        return te.compute((3, 2560, 1792), fcompute, name="squeeze")
 
     def f_swapchannel(A):
         def fcompute(c, x, y):
             return A[2-c, x, y]
-        return te.compute((3, 2560, 1792), fcompute, name="swapnnel1")
+        return te.compute((3, 2560, 1792), fcompute, name="swapnnel")
     
     def f_transpose(A):
         def fcompute(x, y, c):
             return A[c, y, x]
-        return te.compute((2560, 1792, 3), fcompute, name="transpose0")
+        return te.compute((2560, 1792, 3), fcompute, name="transpose")
     
     def f_max_0(A):
         def fcompute(c, x, y):
-            return te.min(A[c, x, y], 0)
-        return te.compute((2560, 1792, 3), fcompute, name="max0")
+            return te.if_then_else(A[c, x, y] > te.const(0, "float32"), A[c, x, y], te.const(0, "float32"))
+        return te.compute((3, 2560, 1792), fcompute, name="max0")
     
     def f_min_1(A):
         def fcompute(c, x, y):
-            return te.min(A[c, x, y], 1)
-        return te.compute((2560, 1792, 3), fcompute, name="min1")
+            return te.if_then_else(A[c, x, y] < te.const(1, "float32"), A[c, x, y], te.const(1, "float32"))
+        return te.compute((3, 2560, 1792), fcompute, name="min1")
 
 
     bb = relax.BlockBuilder()
@@ -47,10 +47,10 @@ def postprocess() -> tvm.IRModule:
         #squeeze
         squeezed = bb.emit(bb.call_te(f_squeeze, x, primfunc_name_hint="tir_squeeze"))
         #clamp
-        # maxed = bb.emit(bb.call_te(f_max_0, squeezed, primfunc_name_hint="tir_max_0"))
-        # clamped = bb.emit(bb.call_te(f_min_1, maxed, primfunc_name_hint="tir_min_1"))
+        maxed = bb.emit(bb.call_te(f_max_0, squeezed, primfunc_name_hint="tir_max_0"))
+        clamped = bb.emit(bb.call_te(f_min_1, maxed, primfunc_name_hint="tir_min_1"))
         #rgb swap
-        swapped = bb.emit(bb.call_te(f_swapchannel, squeezed, primfunc_name_hint="tir_swapchannel"))
+        swapped = bb.emit(bb.call_te(f_swapchannel, clamped, primfunc_name_hint="tir_swapchannel"))
         #transpose
         out_image = bb.emit(bb.call_te(f_transpose, swapped, primfunc_name_hint="tir_transpose"))
 
