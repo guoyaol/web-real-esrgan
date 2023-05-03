@@ -15,8 +15,8 @@ def scale_image() -> tvm.IRModule:
     #divide each element by 255
     #todo: different sizes of images
     def f_scale_image(A):
-        def fcompute(y, x, c):
-            return A[y, x, c] / 255
+        def fcompute(x, y, c):
+            return A[x, y, c] / te.const(255, "float32")
 
         return te.compute((640, 448, 3), fcompute, name="scale_image")
 
@@ -36,24 +36,22 @@ imgname, extension = os.path.splitext(os.path.basename(input_path))
 img = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
+img = img.astype(np.float32)
 
 # our result
-img_nd = tvm.nd.array(img.astype("float32"))
-
+img_nd = tvm.nd.array(img)
 s_mod = scale_image()
 
 ex = relax.build(s_mod, target= "llvm")
 vm = relax.VirtualMachine(ex, tvm.cpu())
 nd_res1 = vm["scale_image"](img_nd)
 
-print(nd_res1)
-print(type(nd_res1))
+# print(nd_res1)
 
 # ref result
-img = img.astype(np.float32)
 max_range = 255
-img = img / max_range
-print(img)
+out_img = img / max_range
+# print(out_img)
 
-np.testing.assert_array_equal(nd_res1.numpy(), img)
+np.testing.assert_array_equal(nd_res1.numpy(), out_img)
 print("test passed")
