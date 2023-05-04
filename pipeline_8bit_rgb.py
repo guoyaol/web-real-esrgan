@@ -91,25 +91,6 @@ def preprocess() -> tvm.IRModule:
         bb.emit_func_output(image)
     return bb.get()
 
-def unscale_image() -> tvm.IRModule:
-    from tvm import te
-    #divide each element by 255
-    #todo: different sizes of images
-    def f_unscale_image(A):
-        def fcompute(y, x, c):
-            return A[y, x, c] * 255
-
-        return te.compute((640, 448, 3), fcompute, name="unscale_image")
-
-    bb = relax.BlockBuilder()
-    x = relax.Var("x", R.Tensor([640, 448, 3], "float32"))
-    with bb.function("unscale_image", [x]):
-        image = bb.emit(
-            bb.call_te(f_unscale_image, x, primfunc_name_hint="tir_unscale_image")
-        )
-        bb.emit_func_output(image)
-    return bb.get()
-
 def postprocess() -> tvm.IRModule:
     from tvm import te
     # output_img = output_img.data.squeeze().float().cpu().clamp_(0, 1).numpy()
@@ -156,22 +137,43 @@ def postprocess() -> tvm.IRModule:
         bb.emit_func_output(out_image)
     return bb.get()
 
+def unscale_image() -> tvm.IRModule:
+    from tvm import te
+    #divide each element by 255
+    #todo: different sizes of images
+    def f_unscale_image(A):
+        def fcompute(y, x, c):
+            return te.round(A[y, x, c] * 255).astype("uint8")
+
+        return te.compute((640, 448, 3), fcompute, name="unscale_image")
+
+    bb = relax.BlockBuilder()
+    x = relax.Var("x", R.Tensor([640, 448, 3], "float32"))
+    with bb.function("unscale_image", [x]):
+        image = bb.emit(
+            bb.call_te(f_unscale_image, x, primfunc_name_hint="tir_unscale_image")
+        )
+        bb.emit_func_output(image)
+    return bb.get()
+
 #1. scale image
 scale = scale_image()
 
-
 #2. preprocess image
 pre_pro = preprocess()
-
 
 # 3. model inference
 loadnet = torch.load(model_path, map_location=torch.device('cpu'))
 model.load_state_dict(loadnet['params_ema'], strict=True)
 rrdb = rrdb_net(model)
-
 rrdb, params = relax.frontend.detach_params(rrdb)
-
 rrdb = relax.transform.LegalizeOps()(rrdb)
+
+#4. post process
+post_pro = postprocess()
+
+#5. un-scale image
+unscale = unscale_image()
 
 
 
@@ -191,14 +193,6 @@ print(nd_res)
 end = time.time()
 print("inference time in seconds: ", end - start)
 
-
-#4. post process
-
-
-
-#5. re-scale image
-
-output = (output_img * 255.0).round().astype(np.uint8)
 
 
 
