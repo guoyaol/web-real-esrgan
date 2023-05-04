@@ -16,7 +16,7 @@ def unscale_image() -> tvm.IRModule:
     #todo: different sizes of images
     def f_unscale_image(A):
         def fcompute(y, x, c):
-            return A[y, x, c] * 255
+            return te.round(A[y, x, c] * 255).astype("uint8")
 
         return te.compute((640, 448, 3), fcompute, name="unscale_image")
 
@@ -35,6 +35,8 @@ imgname, extension = os.path.splitext(os.path.basename(input_path))
 img = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
+img = img/512
+
 
 # our result
 img_nd = tvm.nd.array(img.astype("float32"))
@@ -51,7 +53,7 @@ print(type(nd_res1))
 # ref result
 img = img.astype(np.float32)
 max_range = 255
-img = img * max_range
+img = (img * 255.0).round().astype(np.uint8)
 print(img)
 
 np.testing.assert_array_equal(nd_res1.numpy(), img)
