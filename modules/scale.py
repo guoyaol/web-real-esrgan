@@ -42,8 +42,23 @@ img = img.astype(np.float32)
 img_nd = tvm.nd.array(img)
 s_mod = scale_image()
 
-ex = relax.build(s_mod, target= "llvm")
-vm = relax.VirtualMachine(ex, tvm.cpu())
+from tvm import meta_schedule as ms
+
+# target = tvm.target.Target("cuda")
+# device = tvm.cuda()
+
+target = tvm.target.Target("llvm")
+device = tvm.cpu()
+
+db = ms.database.create(work_dir="scale_db")
+with target, db, tvm.transform.PassContext(opt_level=3):
+    s_mod = relax.transform.MetaScheduleApplyDatabase()(s_mod)
+    # s_mod = tvm.tir.transform.DefaultGPUSchedule()(s_mod)
+
+s_mod.show()
+
+ex = relax.build(s_mod, target= target)
+vm = relax.VirtualMachine(ex, device)
 nd_res1 = vm["scale_image"](img_nd)
 
 # print(nd_res1)
