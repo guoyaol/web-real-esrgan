@@ -166,8 +166,11 @@ pre_pro = preprocess()
 loadnet = torch.load(model_path, map_location=torch.device('cpu'))
 model.load_state_dict(loadnet['params_ema'], strict=True)
 rrdb = rrdb_net(model)
-rrdb, params = relax.frontend.detach_params(rrdb)
-rrdb = relax.transform.LegalizeOps()(rrdb)
+# rrdb, params = relax.frontend.detach_params(rrdb)
+# rrdb = relax.transform.LegalizeOps()(rrdb)
+# legalize included in the pipeline
+# bind to GPU
+# https://github.com/mlc-ai/mlc-llm/blob/main/build.py#L234
 
 #4. post process
 post_pro = postprocess()
@@ -175,23 +178,113 @@ post_pro = postprocess()
 #5. un-scale image
 unscale = unscale_image()
 
+def merge_irmodules(*irmodules: tvm.IRModule) -> tvm.IRModule:
+    merged_mod = tvm.IRModule()
+
+    for mod in irmodules:
+        for gv, func in mod.functions.items():
+            merged_mod[gv] = func
+    return merged_mod
+
+mod: tvm.IRModule = merge_irmodules(
+    scale,
+    pre_pro,
+    rrdb,
+    post_pro,
+    unscale
+)
+
+mod, params = relax.frontend.detach_params(mod)
+
+#---------------------optimization---------------------
+# Apply the default optimization pipeline.
+mod = relax.pipeline.get_pipeline()(mod)
+
+entry_funcs = ["scale_image", "preprocess", "rrdb", "postprocess", "unscale_image"]
+# mod = relax.transform.RemoveUnusedFunctions(entry_funcs)(mod)
+
+mod = relax.transform.LiftTransformParams()(mod)
+
+for global_var, function in mod.functions.items():
+    if isinstance(function, relax.Function):
+        if global_var.name_hint.endswith("_transform_params"):
+            print(
+                global_var.name_hint,
+                f' # <=== This is the weight parameter computation function for "{global_var.name_hint[:-17]}"',
+            )
+        else:
+            print(global_var.name_hint)
+
+
+#---------------------split build and deployment---------------------
+def print_relax_funcnames(mod: tvm.IRModule):
+    for global_var, func in mod.functions.items():
+        if isinstance(func, relax.Function):
+            print(global_var.name_hint)
+    print()
+
+def split_transform_deploy_mod(
+    mod: tvm.IRModule, model_names: List[str], mod_deploy_entry_func: List[str]
+) -> Tuple[tvm.IRModule, tvm.IRModule]:
+    mod_transform = tvm.IRModule()
+    mod_deploy = tvm.IRModule()
+
+    transform_func_names = [name + "_transform_params" for name in model_names]
+    for gv in mod.functions:
+        func = mod[gv]
+        if isinstance(func, tvm.tir.PrimFunc):
+            mod_transform[gv] = func
+            mod_deploy[gv] = func
+        elif gv.name_hint in transform_func_names:
+            mod_transform[gv] = func
+        else:
+            mod_deploy[gv] = func
+
+    # mod_transform = relax.transform.RemoveUnusedFunctions(transform_func_names)(
+    #     mod_transform
+    # )
+    # mod_deploy = relax.transform.RemoveUnusedFunctions(mod_deploy_entry_func)(
+    #     mod_deploy
+    # )
+
+    return mod_transform, mod_deploy
+
+model_names = ["rrdb"]
+
+mod_transform, mod_deploy = split_transform_deploy_mod(
+    mod, model_names, entry_funcs
+)
+
+print("In IRModule for build stage:")
+print_relax_funcnames(mod_transform)
+
+print("In IRModule for deployment stage:")
+print_relax_funcnames(mod_deploy)
+
+#---------------------Prepare for build---------------------
 
 
 
-ex = relax.build(rrdb, target= "llvm")
-vm = relax.VirtualMachine(ex, tvm.cpu())
 
-img = tvm.nd.array(img)
 
-#record inference time
-start = time.time()
 
-print("start inference")
-nd_res = vm["rrdb"](img, *params['rrdb'])
-print(nd_res)
 
-end = time.time()
-print("inference time in seconds: ", end - start)
+
+#---------------------legacy code---------------------
+# ex = relax.build(rrdb, target= "llvm")
+# vm = relax.VirtualMachine(ex, tvm.cpu())
+
+# img = tvm.nd.array(img)
+
+# #record inference time
+# start = time.time()
+
+# print("start inference")
+# nd_res = vm["rrdb"](img, *params['rrdb'])
+# print(nd_res)
+
+# end = time.time()
+# print("inference time in seconds: ", end - start)
 
 
 
