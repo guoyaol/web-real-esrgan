@@ -178,6 +178,8 @@ post_pro = postprocess()
 #5. un-scale image
 unscale = unscale_image()
 
+#---------------------merge together---------------------
+
 def merge_irmodules(*irmodules: tvm.IRModule) -> tvm.IRModule:
     merged_mod = tvm.IRModule()
 
@@ -194,6 +196,8 @@ mod: tvm.IRModule = merge_irmodules(
     unscale
 )
 
+#---------------------seperate model and params---------------------
+
 mod, params = relax.frontend.detach_params(mod)
 
 #---------------------optimization---------------------
@@ -201,7 +205,7 @@ mod, params = relax.frontend.detach_params(mod)
 mod = relax.pipeline.get_pipeline()(mod)
 
 entry_funcs = ["scale_image", "preprocess", "rrdb", "postprocess", "unscale_image"]
-# mod = relax.transform.RemoveUnusedFunctions(entry_funcs)(mod)
+mod = relax.transform.DeadCodeElimination(entry_funcs)(mod)
 
 mod = relax.transform.LiftTransformParams()(mod)
 
@@ -240,12 +244,12 @@ def split_transform_deploy_mod(
         else:
             mod_deploy[gv] = func
 
-    # mod_transform = relax.transform.RemoveUnusedFunctions(transform_func_names)(
-    #     mod_transform
-    # )
-    # mod_deploy = relax.transform.RemoveUnusedFunctions(mod_deploy_entry_func)(
-    #     mod_deploy
-    # )
+    mod_transform = relax.transform.DeadCodeElimination(transform_func_names)(
+        mod_transform
+    )
+    mod_deploy = relax.transform.DeadCodeElimination(mod_deploy_entry_func)(
+        mod_deploy
+    )
 
     return mod_transform, mod_deploy
 
@@ -262,7 +266,33 @@ print("In IRModule for deployment stage:")
 print_relax_funcnames(mod_deploy)
 
 #---------------------Prepare for build---------------------
+def transform_params(
+    mod_transform: tvm.IRModule, model_params: Dict[str, List[tvm.nd.NDArray]]
+) -> Dict[str, List[tvm.nd.NDArray]]:
+    ex = relax.build(mod_transform, target="llvm")
+    vm = relax.vm.VirtualMachine(ex, tvm.cpu())
+    new_params = dict()
+    for name, params in model_params.items():
+        new_params[name] = vm[name + "_transform_params"](params)
+    return new_params
 
+
+def save_params(params: Dict[str, List[tvm.nd.NDArray]], artifact_path: str) -> None:
+    from tvm.contrib import tvmjs
+
+    meta_data = {}
+    param_dict = {}
+    for model in ["rrdb"]:
+        meta_data[f"{model}ParamSize"] = len(params[model])
+        for i, nd in enumerate(params[model]):
+            param_dict[f"{model}_{i}"] = nd
+    tvmjs.dump_ndarray_cache(param_dict, f"{artifact_path}/params", meta_data=meta_data)
+
+new_params = transform_params(mod_transform, params)
+save_params(new_params, artifact_path="dist")
+
+
+#---------------------build---------------------
 
 
 
