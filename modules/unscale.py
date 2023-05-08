@@ -18,10 +18,10 @@ def unscale_image() -> tvm.IRModule:
         def fcompute(y, x, c):
             return te.round(A[y, x, c] * 255).astype("uint8")
 
-        return te.compute((640, 448, 3), fcompute, name="unscale_image")
+        return te.compute((2560, 1792, 3), fcompute, name="unscale_image")
 
     bb = relax.BlockBuilder()
-    x = relax.Var("x", R.Tensor([640, 448, 3], "float32"))
+    x = relax.Var("x", R.Tensor([2560, 1792, 3], "float32"))
     with bb.function("unscale_image", [x]):
         image = bb.emit(
             bb.call_te(f_unscale_image, x, primfunc_name_hint="tir_unscale_image")
