@@ -39,7 +39,7 @@ img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 img = img.astype(np.float32)
 
 # our result
-img_nd = tvm.nd.array(img)
+img_nd = tvm.nd.array(img, device=tvm.cuda())
 s_mod = scale_image()
 
 from tvm import meta_schedule as ms
