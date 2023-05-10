@@ -30,7 +30,7 @@ def preprocess() -> tvm.IRModule:
         bb.emit_func_output(image)
     return bb.get()
 
-input_path = "/home/guoyaol/web-real-esrgan/input/OST_009.png"
+input_path = "/Users/guoyaoli/tvm_work/web-real-esrgan/input/OST_009.png"
 
 imgname, extension = os.path.splitext(os.path.basename(input_path))
 img = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
@@ -43,12 +43,23 @@ img = img / max_range
 
 #our result
 print("our result")
-img_nd = tvm.nd.array(img.reshape(640, 448, 3).astype("float32"))
 
 p_mod = preprocess()
 
-ex = relax.build(p_mod, target= "llvm")
-vm = relax.VirtualMachine(ex, tvm.cpu())
+target = tvm.target.Target("apple/m1-gpu")
+device = tvm.metal()
+
+from tvm import meta_schedule as ms
+db = ms.database.create(work_dir="scale_db")
+
+with target, db, tvm.transform.PassContext(opt_level=3):
+    p_mod = relax.transform.MetaScheduleApplyDatabase()(p_mod)
+    p_mod = tvm.tir.transform.DefaultGPUSchedule()(p_mod)
+
+img_nd = tvm.nd.array(img.reshape(640, 448, 3).astype("float32"), device=tvm.metal())
+
+ex = relax.build(p_mod, target= target)
+vm = relax.VirtualMachine(ex, device)
 nd_res1 = vm["preprocess"](img_nd)
 
 print(nd_res1)

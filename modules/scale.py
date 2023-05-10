@@ -30,7 +30,7 @@ def scale_image() -> tvm.IRModule:
     return bb.get()
 
 
-input_path = "/home/guoyaol/web-real-esrgan/input/OST_009.png"
+input_path = "/Users/guoyaoli/tvm_work/web-real-esrgan/input/OST_009.png"
 
 imgname, extension = os.path.splitext(os.path.basename(input_path))
 img = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
@@ -39,13 +39,13 @@ img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 img = img.astype(np.float32)
 
 # our result
-img_nd = tvm.nd.array(img, device=tvm.cuda())
+img_nd = tvm.nd.array(img, device=tvm.metal())
 s_mod = scale_image()
 
 from tvm import meta_schedule as ms
 
-target = tvm.target.Target("cuda")
-device = tvm.cuda()
+target = tvm.target.Target("apple/m1-gpu")
+device = tvm.metal()
 
 # target = tvm.target.Target("llvm")
 # device = tvm.cpu()

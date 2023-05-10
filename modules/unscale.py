@@ -29,26 +29,32 @@ def unscale_image() -> tvm.IRModule:
         bb.emit_func_output(image)
     return bb.get()
 
-input_path = "/home/guoyaol/web-real-esrgan/input/OST_009.png"
+input_path = "/Users/guoyaoli/tvm_work/web-real-esrgan/input/OST_009.png"
 
-imgname, extension = os.path.splitext(os.path.basename(input_path))
-img = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
-img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+img = torch.rand((2560, 1792, 3), dtype=torch.float32)
 
-img = img/512
+img = img.numpy()
 
 
 # our result
-img_nd = tvm.nd.array(img.astype("float32"))
 
+target = tvm.target.Target("apple/m1-gpu")
+device = tvm.metal()
+
+img_nd = tvm.nd.array(img.astype("float32"), device=device)
 u_mod = unscale_image()
 
-ex = relax.build(u_mod, target= "llvm")
-vm = relax.VirtualMachine(ex, tvm.cpu())
+from tvm import meta_schedule as ms
+db = ms.database.create(work_dir="scale_db")
+with target, db, tvm.transform.PassContext(opt_level=3):
+    u_mod = relax.transform.MetaScheduleApplyDatabase()(u_mod)
+    u_mod = tvm.tir.transform.DefaultGPUSchedule()(u_mod)
+
+ex = relax.build(u_mod, target= target)
+vm = relax.VirtualMachine(ex, device)
+
 nd_res1 = vm["unscale_image"](img_nd)
 
-print(nd_res1)
-print(type(nd_res1))
 
 # ref result
 img = img.astype(np.float32)

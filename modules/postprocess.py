@@ -60,14 +60,25 @@ def postprocess() -> tvm.IRModule:
 
 img = torch.rand((1, 3, 2560, 1792), dtype=torch.float32)
 
+target = tvm.target.Target("apple/m1-gpu")
+device = tvm.metal()
+
+img_nd = tvm.nd.array(img, device=device)
+
 
 #our result
 print("our result")
-img_nd = tvm.nd.array(img)
+
+
+from tvm import meta_schedule as ms
+db = ms.database.create(work_dir="scale_db")
 
 p_mod = postprocess()
-ex = relax.build(p_mod, target= "llvm")
-vm = relax.VirtualMachine(ex, tvm.cpu())
+with target, db, tvm.transform.PassContext(opt_level=3):
+    p_mod = relax.transform.MetaScheduleApplyDatabase()(p_mod)
+    p_mod = tvm.tir.transform.DefaultGPUSchedule()(p_mod)
+ex = relax.build(p_mod, target= target)
+vm = relax.VirtualMachine(ex, device)
 
 nd_res1 = vm["postprocess"](img_nd).numpy()
 
