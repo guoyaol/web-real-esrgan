@@ -18,10 +18,10 @@ def scale_image() -> tvm.IRModule:
         def fcompute(x, y, c):
             return A[x, y, c] / te.const(255, "float32")
 
-        return te.compute((640, 448, 3), fcompute, name="scale_image")
+        return te.compute((179, 179, 3), fcompute, name="scale_image")
 
     bb = relax.BlockBuilder()
-    x = relax.Var("x", R.Tensor([640, 448, 3], "float32"))
+    x = relax.Var("x", R.Tensor([179, 179, 3], "float32"))
     with bb.function("scale_image", [x]):
         image = bb.emit(
             bb.call_te(f_scale_image, x, primfunc_name_hint="tir_scale_image")
@@ -30,7 +30,7 @@ def scale_image() -> tvm.IRModule:
     return bb.get()
 
 
-input_path = "/Users/guoyaoli/tvm_work/web-real-esrgan/input/OST_009.png"
+input_path = "/Users/guoyaoli/tvm_work/web-real-esrgan/input/0014.jpg"
 
 imgname, extension = os.path.splitext(os.path.basename(input_path))
 img = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)

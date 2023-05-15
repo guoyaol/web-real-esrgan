@@ -18,31 +18,31 @@ def postprocess() -> tvm.IRModule:
     def f_squeeze(A):
         def fcompute(c, x, y):
             return A[0, c, x, y]
-        return te.compute((3, 2560, 1792), fcompute, name="squeeze")
+        return te.compute((3, 716, 716), fcompute, name="squeeze")
 
     def f_swapchannel(A):
         def fcompute(c, x, y):
             return A[2-c, x, y]
-        return te.compute((3, 2560, 1792), fcompute, name="swapnnel")
+        return te.compute((3, 716, 716), fcompute, name="swapnnel")
     
     def f_transpose(A):
         def fcompute(x, y, c):
             return A[c, x, y]
-        return te.compute((2560, 1792, 3), fcompute, name="transpose")
+        return te.compute((716, 716, 3), fcompute, name="transpose")
     
     def f_max_0(A):
         def fcompute(c, x, y):
             return te.if_then_else(A[c, x, y] > te.const(0, "float32"), A[c, x, y], te.const(0, "float32"))
-        return te.compute((3, 2560, 1792), fcompute, name="max0")
+        return te.compute((3, 716, 716), fcompute, name="max0")
     
     def f_min_1(A):
         def fcompute(c, x, y):
             return te.if_then_else(A[c, x, y] < te.const(1, "float32"), A[c, x, y], te.const(1, "float32"))
-        return te.compute((3, 2560, 1792), fcompute, name="min1")
+        return te.compute((3, 716, 716), fcompute, name="min1")
 
 
     bb = relax.BlockBuilder()
-    x = relax.Var("x", R.Tensor([1, 3, 2560, 1792], "float32"))
+    x = relax.Var("x", R.Tensor([1, 3, 716, 716], "float32"))
     with bb.function("postprocess", [x]):
         #squeeze
         squeezed = bb.emit(bb.call_te(f_squeeze, x, primfunc_name_hint="tir_squeeze"))
@@ -58,7 +58,7 @@ def postprocess() -> tvm.IRModule:
     return bb.get()
 
 
-img = torch.rand((1, 3, 2560, 1792), dtype=torch.float32)
+img = torch.rand((1, 3, 716, 716), dtype=torch.float32)
 
 target = tvm.target.Target("apple/m1-gpu")
 device = tvm.metal()

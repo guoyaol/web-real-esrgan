@@ -18,11 +18,11 @@ def preprocess() -> tvm.IRModule:
     def f_preprocess(A):
         def fcompute(i, c, x, y):
             return A[x, y, c]
-        return te.compute((1, 3, 640, 448), fcompute, name="preprocess")
+        return te.compute((1, 3, 179, 179), fcompute, name="preprocess")
 
 
     bb = relax.BlockBuilder()
-    x = relax.Var("x", R.Tensor([640, 448, 3], "float32"))
+    x = relax.Var("x", R.Tensor([179, 179, 3], "float32"))
     with bb.function("preprocess", [x]):
         image = bb.emit(
             bb.call_te(f_preprocess, x, primfunc_name_hint="tir_preprocess")
@@ -30,7 +30,7 @@ def preprocess() -> tvm.IRModule:
         bb.emit_func_output(image)
     return bb.get()
 
-input_path = "/Users/guoyaoli/tvm_work/web-real-esrgan/input/OST_009.png"
+input_path = "/Users/guoyaoli/tvm_work/web-real-esrgan/input/0014.jpg"
 
 imgname, extension = os.path.splitext(os.path.basename(input_path))
 img = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
@@ -56,7 +56,7 @@ with target, db, tvm.transform.PassContext(opt_level=3):
     p_mod = relax.transform.MetaScheduleApplyDatabase()(p_mod)
     p_mod = tvm.tir.transform.DefaultGPUSchedule()(p_mod)
 
-img_nd = tvm.nd.array(img.reshape(640, 448, 3).astype("float32"), device=tvm.metal())
+img_nd = tvm.nd.array(img.reshape(179, 179, 3).astype("float32"), device=tvm.metal())
 
 ex = relax.build(p_mod, target= target)
 vm = relax.VirtualMachine(ex, device)
