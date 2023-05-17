@@ -9,7 +9,7 @@ import numpy as np
 
 
 @I.ir_module
-class fused_matmul1_add1:
+class fused_conv2d7_add3_leaky_relu1:
     @T.prim_func
     def main(lv1778: T.Buffer((T.int64(1), T.int64(64), T.int64(1280), T.int64(896)), "float32"), self_rrdb_conv_up1_weight: T.Buffer((T.int64(64), T.int64(64), T.int64(3), T.int64(3)), "float32"), lv1780: T.Buffer((T.int64(1), T.int64(64), T.int64(1), T.int64(1)), "float32"), var_compute_intermediate: T.Buffer((T.int64(1), T.int64(64), T.int64(1280), T.int64(896)), "float32")):
         T.func_attr({"tir.is_scheduled": T.bool(True), "tir.noalias": T.bool(True)})
@@ -66,7 +66,7 @@ class fused_matmul1_add1:
                         T.writes(var_compute_intermediate[v_i0, v_i1, v_i2, v_i3])
                         var_compute_intermediate[v_i0, v_i1, v_i2, v_i3] = T.Select(T.float32(0) < var_T_add_intermediate[v_i0, v_i1, v_i2, v_i3], var_T_add_intermediate[v_i0, v_i1, v_i2, v_i3], var_T_add_intermediate[v_i0, v_i1, v_i2, v_i3] * T.float32(0.20000000000000001))
 
-mod = fused_matmul1_add1
+mod = fused_conv2d7_add3_leaky_relu1
 # print(tvm.lower(mod["main"]))
 
 
