@@ -13,16 +13,6 @@ import torch
 from typing import Dict, List, Tuple
 import time
 
-
-
-input_path = "./input/OST_009.png"
-output_path = "./output"
-
-imgname, extension = os.path.splitext(os.path.basename(input_path))
-img = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
-img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-
 netscale = 4
 model_path = "./weights/RealESRGAN_x4plus.pth"
 model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
@@ -145,10 +135,10 @@ def unscale_image() -> tvm.IRModule:
         def fcompute(y, x, c):
             return te.round(A[y, x, c] * 255).astype("uint8")
 
-        return te.compute((640, 448, 3), fcompute, name="unscale_image")
+        return te.compute((2560, 1792, 3), fcompute, name="unscale_image")
 
     bb = relax.BlockBuilder()
-    x = relax.Var("x", R.Tensor([640, 448, 3], "float32"))
+    x = relax.Var("x", R.Tensor([2560, 1792, 3], "float32"))
     with bb.function("unscale_image", [x]):
         image = bb.emit(
             bb.call_te(f_unscale_image, x, primfunc_name_hint="tir_unscale_image")
@@ -166,11 +156,6 @@ pre_pro = preprocess()
 loadnet = torch.load(model_path, map_location=torch.device('cpu'))
 model.load_state_dict(loadnet['params_ema'], strict=True)
 rrdb = rrdb_net(model)
-# rrdb, params = relax.frontend.detach_params(rrdb)
-# rrdb = relax.transform.LegalizeOps()(rrdb)
-# legalize included in the pipeline
-# bind to GPU
-# https://github.com/mlc-ai/mlc-llm/blob/main/build.py#L234
 
 #4. post process
 post_pro = postprocess()
@@ -179,7 +164,6 @@ post_pro = postprocess()
 unscale = unscale_image()
 
 #---------------------merge together---------------------
-
 def merge_irmodules(*irmodules: tvm.IRModule) -> tvm.IRModule:
     merged_mod = tvm.IRModule()
 
@@ -196,12 +180,8 @@ mod: tvm.IRModule = merge_irmodules(
     unscale
 )
 
-#---------------------seperate model and params---------------------
-
 mod, params = relax.frontend.detach_params(mod)
 
-#---------------------optimization---------------------
-# Apply the default optimization pipeline.
 mod = relax.pipeline.get_pipeline()(mod)
 
 entry_funcs = ["scale_image", "preprocess", "rrdb", "postprocess", "unscale_image"]
@@ -219,8 +199,6 @@ for global_var, function in mod.functions.items():
         else:
             print(global_var.name_hint)
 
-
-#---------------------split build and deployment---------------------
 def print_relax_funcnames(mod: tvm.IRModule):
     for global_var, func in mod.functions.items():
         if isinstance(func, relax.Function):
@@ -265,7 +243,7 @@ print_relax_funcnames(mod_transform)
 print("In IRModule for deployment stage:")
 print_relax_funcnames(mod_deploy)
 
-#---------------------Prepare for build---------------------
+
 def transform_params(
     mod_transform: tvm.IRModule, model_params: Dict[str, List[tvm.nd.NDArray]]
 ) -> Dict[str, List[tvm.nd.NDArray]]:
@@ -291,39 +269,101 @@ def save_params(params: Dict[str, List[tvm.nd.NDArray]], artifact_path: str) -> 
 new_params = transform_params(mod_transform, params)
 save_params(new_params, artifact_path="dist")
 
+target = tvm.target.Target("apple/m1-gpu")
+device = tvm.metal()
 
-#---------------------build---------------------
+def tune(mod: tvm.IRModule) -> None:
+    from tvm import meta_schedule as ms
+
+    ms.relax_integration.tune_relax(
+        mod=mod,
+        target=tvm.target.Target("apple/m1-gpu-restricted"),
+        params={},
+        builder=ms.builder.LocalBuilder(
+            max_workers=6,
+        ),
+        runner=ms.runner.RPCRunner(
+            ms.runner.RPCConfig(
+                tracker_host="192.168.10.1",
+                tracker_port=9191,
+                tracker_key="m2-mac-mini",
+                session_timeout_sec=50,
+            )
+        ),
+        work_dir="log_db_tuning",
+        max_trials_global=100,
+        max_trials_per_task=4,
+    )
+
+tune(mod_deploy)
 
 
 
+# from tvm import meta_schedule as ms
 
+# db = ms.database.create(work_dir="log_db")
+# with target, db, tvm.transform.PassContext(opt_level=3):
+#     mod_deploy = relax.transform.MetaScheduleApplyDatabase()(mod_deploy)
+#     mod_deploy = tvm.tir.transform.DefaultGPUSchedule()(mod_deploy)
 
+# ex = relax.build(mod=mod_deploy, target=target)
 
+# ex.export_library("dist/real_esrgan.so")
 
-#---------------------legacy code---------------------
-# ex = relax.build(rrdb, target= "llvm")
-# vm = relax.VirtualMachine(ex, tvm.cpu())
+# target = tvm.target.Target("apple/m2-gpu")
+# device = tvm.metal()
 
-# img = tvm.nd.array(img)
+# def load_params(artifact_path: str, device) -> Dict[str, List[tvm.nd.NDArray]]:
+#     from tvm.contrib import tvmjs
 
-# #record inference time
-# start = time.time()
+#     pdict = {}
+#     params, meta = tvmjs.load_ndarray_cache(f"{artifact_path}/params", device)
+#     for model in ["rrdb"]:
+#         plist = []
+#         size = meta[f"{model}ParamSize"]
+#         for i in range(size):
+#             plist.append(params[f"{model}_{i}"])
+#         pdict[model] = plist
+#     return pdict
 
-# print("start inference")
-# nd_res = vm["rrdb"](img, *params['rrdb'])
-# print(nd_res)
+# const_params_dict = load_params(artifact_path="dist", device=device)
+# ex = tvm.runtime.load_module("dist/real_esrgan.so")
 
-# end = time.time()
-# print("inference time in seconds: ", end - start)
+# vm = relax.VirtualMachine(rt_mod=ex, device=device)
 
+# class TVMESRPipeline:
+#     def __init__(
+#         self,
+#         vm: relax.VirtualMachine,
+#         tvm_device,
+#         param_dict,
+#     ):
+#         def wrapper(f, params):
+#             def wrapped_f(*args):
+#                 return f(*args, params)
 
+#             return wrapped_f
 
+#         self.vm = vm
+        
+#         self.rrdb = wrapper(vm["rrdb"], param_dict["rrdb"])
+        
+#         self.scale_image = vm["scale_image"]
+#         self.preprocess = vm["preprocess"]
+#         self.unscale_image = vm["unscale_image"]
+#         self.postprocess = vm["postprocess"]
 
+#         self.tvm_device = tvm_device
+#         self.param_dict = param_dict
 
+#     def __call__(self, input_image: np.array):
+#         image = tvm.nd.array(input_image, device=self.tvm_device)
+#         image = self.scale_image(image)
+#         image = self.preprocess(image)
+#         image = self.rrdb(image)
+#         image = self.postprocess(image)
+#         image = self.unscale_image(image)
 
-# #---------------------save image---------------------
-# extension = extension[1:]
-
-# save_path = os.path.join(output_path, f'{imgname}.{extension}')
-
-# cv2.imwrite(save_path, output)
+#         return image
+    
+# pipe = TVMESRPipeline(vm, device, const_params_dict)
