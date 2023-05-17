@@ -291,8 +291,8 @@ def tune(mod: tvm.IRModule) -> None:
             )
         ),
         work_dir="log_db_tuning",
-        max_trials_global=100,
-        max_trials_per_task=4,
+        max_trials_global=50000,
+        max_trials_per_task=2000,
     )
 
 tune(mod_deploy)
