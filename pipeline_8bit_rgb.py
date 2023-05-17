@@ -272,6 +272,9 @@ save_params(new_params, artifact_path="dist")
 target = tvm.target.Target("apple/m1-gpu")
 device = tvm.metal()
 
+# import pickle
+# pickle.dump(mod_deploy, "./pickle_dploy_mod")
+
 def tune(mod: tvm.IRModule) -> None:
     from tvm import meta_schedule as ms
 
@@ -293,6 +296,7 @@ def tune(mod: tvm.IRModule) -> None:
         work_dir="log_db_tuning",
         max_trials_global=50000,
         max_trials_per_task=2000,
+        strategy=ms.search_strategy.EvolutionarySearch(init_min_unmeasured=10, max_fail_count=20),
     )
 
 tune(mod_deploy)
