@@ -22,8 +22,8 @@ def load_params(artifact_path: str, device) -> Dict[str, List[tvm.nd.NDArray]]:
         pdict[model] = plist
     return pdict
 
-const_params_dict = load_params(artifact_path="/Users/guoyaoli/tvm_work/web-real-esrgan/dist", device=device)
-ex = tvm.runtime.load_module("/Users/guoyaoli/tvm_work/web-real-esrgan/dist/real_esrgan.so")
+const_params_dict = load_params(artifact_path="../dist", device=device)
+ex = tvm.runtime.load_module("../dist/real_esrgan.so")
 
 vm = relax.VirtualMachine(rt_mod=ex, device=device)
 
@@ -65,7 +65,7 @@ class TVMESRPipeline:
 
 pipe = TVMESRPipeline(vm, device, const_params_dict)
 
-input_path = "/Users/guoyaoli/tvm_work/web-real-esrgan/input/OST_009.png"
+input_path = "../input/OST_009.png"
 output_path = "./output"
 
 imgname, extension = os.path.splitext(os.path.basename(input_path))
