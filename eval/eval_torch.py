@@ -32,6 +32,10 @@ outscale = 4
 
 start_time = time.time()
 
+device = torch.device('cuda')
+model.to(device)
+model.eval()
+
 
 for i in range(10):
     #1. scale image
@@ -46,11 +50,6 @@ for i in range(10):
 
 
     # 3. model inference
-
-    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    device = torch.device('cuda')
-    model.to(device)
-    model.eval()
 
     with torch.no_grad():
         img = img.to(device)
