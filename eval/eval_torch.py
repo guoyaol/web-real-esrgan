@@ -15,7 +15,7 @@ import time
 
 
 
-input_path = "/Users/guoyaoli/tvm_work/web-real-esrgan/input/OST_009.png"
+input_path = "/home/guoyaol/web-real-esrgan/input/OST_009.png"
 output_path = "./output"
 
 imgname, extension = os.path.splitext(os.path.basename(input_path))
@@ -24,7 +24,7 @@ input_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
 netscale = 4
-model_path = "/Users/guoyaoli/tvm_work/web-real-esrgan/weights/RealESRGAN_x4plus.pth"
+model_path = "/home/guoyaol/web-real-esrgan/weights/RealESRGAN_x4plus.pth"
 model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
 loadnet = torch.load(model_path, map_location=torch.device('cpu'))
 model.load_state_dict(loadnet['params_ema'], strict=True)
@@ -48,7 +48,7 @@ for i in range(10):
     # 3. model inference
 
     # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    device = torch.device('mps')
+    device = torch.device('cuda')
     model.to(device)
     model.eval()
 
