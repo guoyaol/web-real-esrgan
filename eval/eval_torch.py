@@ -30,12 +30,11 @@ loadnet = torch.load(model_path, map_location=torch.device('cpu'))
 model.load_state_dict(loadnet['params_ema'], strict=True)
 outscale = 4
 
-start_time = time.time()
-
 device = torch.device('cuda')
 model.to(device)
 model.eval()
 
+start_time = time.time()
 
 for i in range(10):
     #1. scale image
