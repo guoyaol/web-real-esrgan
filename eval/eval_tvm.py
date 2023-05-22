@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import os
 from typing import Dict, List
+import time
 
 target = tvm.target.Target("apple/m2-gpu")
 device = tvm.metal()
@@ -71,9 +72,17 @@ imgname, extension = os.path.splitext(os.path.basename(input_path))
 img = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-img = img.astype(np.float32)
+start_time = time.time()
 
-output = pipe(img)
+for i in range(10):
+    img = img.astype(np.float32)
+
+    output = pipe(img)
+
+end_time = time.time()
+
+execution_time = end_time - start_time  # subtract start_time from end_time
+print(f"Executed the code in: {execution_time} seconds")  # print the execution time
 
 final_result = output.numpy().astype(np.uint8)
 cv2.imwrite("./output/TVM_output.png", final_result)
