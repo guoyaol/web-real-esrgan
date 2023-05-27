@@ -52,10 +52,17 @@ for i in range(10):
 
     # 3. model inference
 
+    initial_memory = torch.cuda.memory_allocated(device)
     with torch.no_grad():
         img = img.to(device)
         output_img = model(img)
 
+    current_memory = torch.cuda.memory_allocated(device)
+
+    # The memory used by the model is the difference
+    memory_used = current_memory - initial_memory
+
+    print(f'Memory used: {memory_used / (1024**2)} MB')
 
     #4. post process
     output_img = output_img.data.squeeze().float().cpu().clamp_(0, 1).numpy()
