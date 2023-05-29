@@ -13,6 +13,20 @@ import torch
 from typing import Dict, List, Tuple
 import time
 
+import GPUtil
+stop_thread = False
+def monitor_gpu(interval):
+    global stop_thread
+    while not stop_thread:
+        GPUs = GPUtil.getGPUs()
+        for gpu in GPUs:
+            print(f'GPU memory used: {gpu.memoryUsed}MB')
+        time.sleep(interval)
+
+import threading
+t = threading.Thread(target=monitor_gpu, args=(1,))
+t.start()  # Start monitoring GPU memory usage
+
 
 
 input_path = "/home/guoyaol/web-real-esrgan/input/OST_009.png"
@@ -33,7 +47,17 @@ outscale = 4
 device = torch.device('cuda')
 model.to(device)
 model.eval()
-# model = torch.compile(model)
+
+max_autotune = os.environ.get("TORCHINDUCTOR_MAX_AUTOTUNE") == "1"
+model = torch.compile(model)
+
+def count_parameters_in_GB(model):
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total_params_size = total_params * 4 / (1024 ** 3)  # convert bytes to GB
+    return total_params_size
+
+print(f'The model parameters require {count_parameters_in_GB(model):.3f} GB of memory')
+
 
 start_time = time.time()
 
@@ -50,17 +74,11 @@ for i in range(10):
 
 
     # 3. model inference
-    initial_memory = torch.cuda.memory_allocated(device)
 
     with torch.no_grad():
         img = img.to(device)
         output_img = model(img)
 
-    current_memory = torch.cuda.memory_allocated(device)
-    # The memory used by the model is the difference
-    memory_used = current_memory - initial_memory
-
-    print(f'Memory used: {memory_used / (1024**2)} MB')
 
     #4. post process
     output_img = output_img.data.squeeze().float().cpu().clamp_(0, 1).numpy()
@@ -71,6 +89,9 @@ for i in range(10):
     output = (output_img * 255.0).round().astype(np.uint8)
 
 end_time = time.time()
+
+stop_thread = True
+t.join()
 
 execution_time = end_time - start_time  # subtract start_time from end_time
 print(f"Executed the code in: {execution_time} seconds")  # print the execution time
