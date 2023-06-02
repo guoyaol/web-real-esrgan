@@ -7,6 +7,7 @@ import web_real_esrgan.trace as trace
 import web_real_esrgan.utils as utils
 from network import RRDBNet
 from platform import system
+import torch
 
 import tvm
 from tvm import relax
@@ -15,7 +16,8 @@ from tvm import relax
 def _parse_args():
     args = argparse.ArgumentParser()
     args.add_argument("--target", type=str, default="auto")
-    args.add_argument("--db-path", type=str, default="log_db/")
+    args.add_argument("--db-path", type=str, default="log_db_tuning_1000_nsearch/")
+    args.add_argument("--model-path", type=str, default="weights/RealESRGAN_x4plus.pth")
     args.add_argument("--artifact-path", type=str, default="dist")
     args.add_argument(
         "--use-cache",
@@ -73,10 +75,12 @@ def debug_dump_shader(ex, name, args):
 
 
 def trace_models(
-    device_str: str,
+    args
 ) -> Tuple[tvm.IRModule, Dict[str, List[tvm.nd.NDArray]]]:
 
     model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
+    loadnet = torch.load(args.model_path, map_location=torch.device('cpu'))
+    model.load_state_dict(loadnet['params_ema'], strict=True)
 
     scale = trace.scale_image()
 
