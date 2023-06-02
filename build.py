@@ -130,6 +130,7 @@ def build(mod: tvm.IRModule, args: Dict) -> None:
     db = ms.database.create(work_dir=args.db_path)
     with args.target, db, tvm.transform.PassContext(opt_level=3):
         mod_deploy = relax.transform.MetaScheduleApplyDatabase(enable_warning=True)(mod)
+        mod_deploy = tvm.tir.transform.DefaultGPUSchedule()(mod_deploy)
 
     debug_dump_script(mod_deploy, "mod_build_stage.py", args)
 
@@ -138,11 +139,11 @@ def build(mod: tvm.IRModule, args: Dict) -> None:
     target_kind = args.target.kind.default_keys[0]
 
     if target_kind == "webgpu":
-        output_filename = f"stable_diffusion_{target_kind}.wasm"
+        output_filename = f"real_esrgan_{target_kind}.wasm"
     else:
-        output_filename = f"stable_diffusion_{target_kind}.so"
+        output_filename = f"real_esrgan_{target_kind}.so"
 
-    debug_dump_shader(ex, f"stable_diffusion_{target_kind}", args)
+    debug_dump_shader(ex, f"real_esrgan_{target_kind}", args)
     ex.export_library(os.path.join(args.artifact_path, output_filename))
 
 
