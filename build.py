@@ -4,7 +4,7 @@ import os
 import argparse
 import pickle
 import web_real_esrgan.trace as trace
-import web_stable_diffusion.utils as utils
+import web_real_esrgan.utils as utils
 from network import RRDBNet
 from platform import system
 
@@ -78,20 +78,26 @@ def trace_models(
 
     model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
 
-    clip = trace.clip_to_text_embeddings(pipe)
-    unet = trace.unet_latents_to_noise_pred(pipe, device_str)
-    vae = trace.vae_to_image(pipe)
-    concat_embeddings = trace.concat_embeddings()
-    image_to_rgba = trace.image_to_rgba()
-    schedulers = [scheduler.scheduler_steps() for scheduler in trace.schedulers]
+    scale = trace.scale_image()
+
+    #2. preprocess image
+    pre_pro = trace.preprocess()
+
+    # 3. model inference
+    rrdb = trace.rrdb_net(model)
+
+    #4. post process
+    post_pro = trace.postprocess()
+
+    #5. un-scale image
+    unscale = trace.unscale_image()
 
     mod = utils.merge_irmodules(
-        clip,
-        unet,
-        vae,
-        concat_embeddings,
-        image_to_rgba,
-        *schedulers,
+        scale,
+        pre_pro,
+        rrdb,
+        post_pro,
+        unscale
     )
     return relax.frontend.detach_params(mod)
 
