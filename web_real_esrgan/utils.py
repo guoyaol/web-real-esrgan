@@ -5,7 +5,6 @@ from typing import Dict, List, Tuple
 import tvm
 from tvm import relax
 
-from .models.unet_2d_condition import TVMUNet2DConditionModel
 
 
 def detect_available_torch_device() -> str:
