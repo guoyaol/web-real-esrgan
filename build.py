@@ -159,7 +159,7 @@ if __name__ == "__main__":
     cache_path = os.path.join(ARGS.artifact_path, "mod_cache_before_build.pkl")
     use_cache = ARGS.use_cache and os.path.isfile(cache_path)
     if not use_cache:
-        mod, params = trace_models(torch_dev_key)
+        mod, params = trace_models(ARGS)
         mod = legalize_and_lift_params(mod, params, ARGS)
         with open(cache_path, "wb") as outfile:
             pickle.dump(mod, outfile)

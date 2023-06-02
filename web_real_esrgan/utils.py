@@ -73,7 +73,7 @@ def save_params(params: Dict[str, List[tvm.nd.NDArray]], artifact_path: str) -> 
 
     meta_data = {}
     param_dict = {}
-    for model in ["unet", "vae", "clip"]:
+    for model in ["rrdb"]:
         meta_data[f"{model}ParamSize"] = len(params[model])
         for i, nd in enumerate(params[model]):
             param_dict[f"{model}_{i}"] = nd
@@ -85,7 +85,7 @@ def load_params(artifact_path: str, device) -> Dict[str, List[tvm.nd.NDArray]]:
 
     pdict = {}
     params, meta = tvmjs.load_ndarray_cache(f"{artifact_path}/params", device)
-    for model in ["vae", "unet", "clip"]:
+    for model in ["rrdb"]:
         plist = []
         size = meta[f"{model}ParamSize"]
         for i in range(size):

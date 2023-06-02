@@ -1,8 +1,6 @@
 import torch
 import torch.fx as fx
 
-from ... import utils as utils
-from .. import scheduler_trace as scheduler_trace
 
 import tvm
 from tvm import relax
