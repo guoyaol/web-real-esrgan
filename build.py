@@ -106,26 +106,19 @@ def legalize_and_lift_params(
     mod: tvm.IRModule, model_params: Dict[str, List[tvm.nd.NDArray]], args: Dict
 ) -> tvm.IRModule:
     """First-stage: Legalize ops and trace"""
-    model_names = ["clip", "unet", "vae"]
-    scheduler_func_names = [
-        name
-        for scheduler in trace.schedulers
-        for name in scheduler.scheduler_steps_func_names()
-    ]
-    entry_funcs = (
-        model_names + scheduler_func_names + ["image_to_rgba", "concat_embeddings"]
-    )
+    model_names = ["rrdb"]
+    entry_funcs = ["scale_image", "preprocess", "rrdb", "postprocess", "unscale_image"]
 
     mod = relax.pipeline.get_pipeline()(mod)
     mod = relax.transform.DeadCodeElimination(entry_funcs)(mod)
     mod = relax.transform.LiftTransformParams()(mod)
+
     mod_transform, mod_deploy = utils.split_transform_deploy_mod(
         mod, model_names, entry_funcs
     )
 
     debug_dump_script(mod_transform, "mod_lift_params.py", args)
 
-    trace.compute_save_scheduler_consts(args.artifact_path)
     new_params = utils.transform_params(mod_transform, model_params)
     utils.save_params(new_params, args.artifact_path)
     return mod_deploy
