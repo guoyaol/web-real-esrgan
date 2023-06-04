@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<input type="file" id="imgInput" accept="image/*">
+<img id="imgDisplay" style="display: none;">
+
+<script>
+    document.getElementById('imgInput').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+
+        if (file) {
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const imgDisplay = document.getElementById('imgDisplay');
+                imgDisplay.style.display = 'block';
+                imgDisplay.src = e.target.result;
+            }
+
+            reader.readAsDataURL(file);
+        }
+    });
+</script>
+
+</body>
+</html>
+
