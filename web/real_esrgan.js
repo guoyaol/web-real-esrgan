@@ -192,18 +192,12 @@ class RealESRGANInstance {
   /**
    * Initialize the pipeline
    *
-   * @param schedulerConstUrl The scheduler constant.
-   * @param tokenizerName The name of the tokenizer.
    */
-  async #asyncInitPipeline(schedulerConstUrl, tokenizerName) {
+  async #asyncInitPipeline() {
     if (this.tvm == undefined) {
       throw Error("asyncInitTVM is not called");
     }
     if (this.pipeline !== undefined) return;
-    var schedulerConst = []
-    for (let i = 0; i < schedulerConstUrl.length; ++i) {
-      schedulerConst.push(await (await fetch(schedulerConstUrl[i])).json())
-    }
     //TODO: delete tokenizer
     // const tokenizer = await tvmjsGlobalEnv.getTokenizer(tokenizerName);
     this.pipeline = this.tvm.withNewScope(() => {
@@ -250,7 +244,7 @@ class RealESRGANInstance {
     if (this.pipeline !== undefined) return;
     await this.#asyncInitConfig();
     await this.#asyncInitTVM(this.config.wasmUrl, this.config.cacheUrl);
-    await this.#asyncInitPipeline(this.config.schedulerConstUrl, this.config.tokenizer);
+    await this.#asyncInitPipeline();
   }
 
   /**
@@ -315,3 +309,15 @@ class RealESRGANInstance {
     this.pipeline = undefined;
   }
 }
+
+
+localRealESRGANInst = new RealESRGANInstance();
+
+tvmjsGlobalEnv.asyncOnGenerate = async function () {
+  await localRealESRGANInst.generate();
+};
+
+tvmjsGlobalEnv.asyncOnRPCServerLoad = async function (tvm) {
+  const inst = new RealESRGANInstance();
+  await inst.asyncInitOnRPCServerLoad(tvm);
+};
