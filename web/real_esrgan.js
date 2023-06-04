@@ -83,7 +83,7 @@ class RealESRGANPipeline {
     //--------------------------
     this.tvm.beginScope();
     // get latents
-    const latentShape = [1, 4, 64, 64];
+    const latentShape = [1, 3, 640, 448];
     // use uniform distribution with same variance as normal(0, 1)
     const scale = Math.sqrt(12) / 2;
     let latents = this.tvm.detachFromCurrentScope(
