@@ -34,64 +34,16 @@ class RealESRGANPipeline {
     this.postprocess = this.tvm.detachFromCurrentScope(
       this.vm.getFunction("postprocess")
     );
-
-    // this.schedulerConsts = schedulerConsts;
-    // this.clipToTextEmbeddings = this.tvm.detachFromCurrentScope(
-    //   this.vm.getFunction("clip")
-    // );
-    // this.clipParams = this.tvm.detachFromCurrentScope(
-    //   this.tvm.getParamsFromCache("clip", cacheMetadata.clipParamSize)
-    // );
-    // this.unetLatentsToNoisePred = this.tvm.detachFromCurrentScope(
-    //   this.vm.getFunction("unet")
-    // );
-    // this.unetParams = this.tvm.detachFromCurrentScope(
-    //   this.tvm.getParamsFromCache("unet", cacheMetadata.unetParamSize)
-    // );
-    // this.vaeToImage = this.tvm.detachFromCurrentScope(
-    //   this.vm.getFunction("vae")
-    // );
-    // this.vaeParams = this.tvm.detachFromCurrentScope(
-    //   this.tvm.getParamsFromCache("vae", cacheMetadata.vaeParamSize)
-    // );
-    // this.imageToRGBA = this.tvm.detachFromCurrentScope(
-    //   this.vm.getFunction("image_to_rgba")
-    // );
-    // this.concatEmbeddings = this.tvm.detachFromCurrentScope(
-    //   this.vm.getFunction("concat_embeddings")
-    // );
   }
 
   dispose() {
     // note: tvm instance is not owned by this class
-    this.concatEmbeddings.dispose();
-    this.imageToRGBA.dispose()
-    this.vaeParams.dispose();
-    this.vaeToImage.dispose();
-    this.unetParams.dispose();
-    this.unetLatentsToNoisePred.dispose();
-    this.clipParams.dispose();
-    this.clipToTextEmbeddings.dispose();
-    this.vm.dispose();
-  }
-
-  /**
-   * Tokenize the prompt to TVMNDArray.
-   * @param prompt Input prompt
-   * @returns The text id NDArray.
-   */
-  tokenize(prompt) {
-    const encoded = this.tokenizer.encode(prompt, true).input_ids;
-    const inputIDs = new Int32Array(this.maxTokenLength);
-
-    if (encoded.length < this.maxTokenLength) {
-      inputIDs.set(encoded);
-      const lastTok = encoded[encoded.length - 1];
-      inputIDs.fill(lastTok, encoded.length, inputIDs.length);
-    } else {
-      inputIDs.set(encoded.slice(0, this.maxTokenLength));
-    }
-    return this.tvm.empty([1, this.maxTokenLength], "int32", this.device).copyFrom(inputIDs);
+    this.rrdbParams.dispose();
+    this.rrdbResNet.dispose();
+    this.scale.dispose();
+    this.unscale.dispose();
+    this.preprocess.dispose();
+    this.postprocess.dispose();
   }
 
   /**
@@ -101,6 +53,7 @@ class RealESRGANPipeline {
     await this.tvm.asyncLoadWebGPUPiplines(this.vm.getInternalModule());
   }
 
+  //TODO: add web ESRGAN generation pipeline
   /**
    * Run generation pipeline.
    *
