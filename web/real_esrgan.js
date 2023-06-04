@@ -67,7 +67,7 @@ class RealESRGANPipeline {
    * @param beginRenderVae Begin rendering VAE after skipping these warmup runs.
    */
   async generate(
-    inputImage,
+    // inputImage,
     prompt,
     negPrompt = "",
     progressCallback = undefined,
@@ -112,3 +112,206 @@ class RealESRGANPipeline {
     this.tvm.clearCanvas();
   }
 };
+
+class RealESRGANInstance {
+  constructor() {
+    this.tvm = undefined;
+    this.pipeline = undefined;
+    this.config = undefined;
+    this.generateInProgress = false;
+    this.logger = console.log;
+  }
+  /**
+   * Initialize TVM
+   * @param wasmUrl URL to wasm source.
+   * @param cacheUrl URL to NDArray cache.
+   * @param logger Custom logger.
+   */
+  async #asyncInitTVM(wasmUrl, cacheUrl) {
+    if (this.tvm !== undefined) {
+      return;
+    }
+
+    if (document.getElementById("log") !== undefined) {
+      this.logger = function (message) {
+        console.log(message);
+        const d = document.createElement("div");
+        d.innerHTML = message;
+        document.getElementById("log").appendChild(d);
+      };
+    }
+
+    const wasmSource = await (
+      await fetch(wasmUrl)
+    ).arrayBuffer();
+    const tvm = await tvmjs.instantiate(
+      new Uint8Array(wasmSource),
+      new EmccWASI(),
+      this.logger
+    );
+    // initialize WebGPU
+    try {
+      const output = await tvmjs.detectGPUDevice();
+      if (output !== undefined) {
+        var label = "WebGPU";
+        if (output.adapterInfo.description.length != 0) {
+          label += " - " + output.adapterInfo.description;
+        } else {
+          label += " - " + output.adapterInfo.vendor;
+        }
+        document.getElementById(
+          "gpu-tracker-label").innerHTML = ("Initialize GPU device: " + label);
+        tvm.initWebGPU(output.device);
+      } else {
+        document.getElementById(
+          "gpu-tracker-label").innerHTML = "This browser env do not support WebGPU";
+        this.reset();
+        throw Error("This browser env do not support WebGPU");
+      }
+    } catch (err) {
+      document.getElementById("gpu-tracker-label").innerHTML = (
+        "Find an error initializing the WebGPU device " + err.toString()
+      );
+      console.log(err.stack);
+      this.reset();
+      throw Error("Find an error initializing WebGPU: " + err.toString());
+    }
+
+    this.tvm = tvm;
+    function initProgressCallback(report) {
+      document.getElementById("progress-tracker-label").innerHTML = report.text;
+      document.getElementById("progress-tracker-progress").value = report.progress * 100;
+    }
+    tvm.registerInitProgressCallback(initProgressCallback);
+    if (!cacheUrl.startsWith("http")) {
+      cacheUrl = new URL(cacheUrl, document.URL).href;
+    }
+    await tvm.fetchNDArrayCache(cacheUrl, tvm.webgpu());
+  }
+
+  /**
+   * Initialize the pipeline
+   *
+   * @param schedulerConstUrl The scheduler constant.
+   * @param tokenizerName The name of the tokenizer.
+   */
+  async #asyncInitPipeline(schedulerConstUrl, tokenizerName) {
+    if (this.tvm == undefined) {
+      throw Error("asyncInitTVM is not called");
+    }
+    if (this.pipeline !== undefined) return;
+    var schedulerConst = []
+    for (let i = 0; i < schedulerConstUrl.length; ++i) {
+      schedulerConst.push(await (await fetch(schedulerConstUrl[i])).json())
+    }
+    //TODO: delete tokenizer
+    // const tokenizer = await tvmjsGlobalEnv.getTokenizer(tokenizerName);
+    this.pipeline = this.tvm.withNewScope(() => {
+      return new RealESRGANPipeline(this.tvm, this.tvm.cacheMetadata);
+    });
+    await this.pipeline.asyncLoadWebGPUPiplines();
+  }
+
+  /**
+   * Async initialize config
+   */
+  async #asyncInitConfig() {
+    if (this.config !== undefined) return;
+    this.config = await (await fetch("real-esrgan-config.json")).json();
+  }
+
+  /**
+   * Function to create progress callback tracker.
+   * @returns A progress callback tracker.
+   */
+  #getProgressCallback() {
+    const tstart = performance.now();
+    function progressCallback(stage, counter, numSteps, totalNumSteps) {
+      const timeElapsed = (performance.now() - tstart) / 1000;
+      let text = "Generating ... at stage " + stage;
+      if (stage == "unet") {
+        counter += 1;
+        text += " step [" + counter + "/" + numSteps + "]"
+      }
+      if (stage == "vae") {
+        counter = totalNumSteps;
+      }
+      text += ", " + Math.ceil(timeElapsed) + " secs elapsed.";
+      document.getElementById("progress-tracker-label").innerHTML = text;
+      document.getElementById("progress-tracker-progress").value = (counter / totalNumSteps) * 100;
+    }
+    return progressCallback;
+  }
+
+  /**
+   * Async initialize instance.
+   */
+  async asyncInit() {
+    if (this.pipeline !== undefined) return;
+    await this.#asyncInitConfig();
+    await this.#asyncInitTVM(this.config.wasmUrl, this.config.cacheUrl);
+    await this.#asyncInitPipeline(this.config.schedulerConstUrl, this.config.tokenizer);
+  }
+
+  /**
+   * Async initialize
+   *
+   * @param tvm The tvm instance.
+   */
+  async asyncInitOnRPCServerLoad(tvmInstance) {
+    if (this.tvm !== undefined) {
+      throw Error("Cannot reuse a loaded instance for rpc");
+    }
+    this.tvm = tvmInstance;
+
+    this.tvm.beginScope();
+    this.tvm.registerAsyncServerFunc("generate", async (prompt, schedulerId, vaeCycle) => {
+      document.getElementById("inputPrompt").value = prompt;
+      const negPrompt = "";
+      document.getElementById("negativePrompt").value = "";
+      await this.pipeline.generate(prompt, negPrompt, this.#getProgressCallback(), schedulerId, vaeCycle);
+    });
+    this.tvm.registerAsyncServerFunc("clearCanvas", async () => {
+      this.tvm.clearCanvas();
+    });
+    this.tvm.registerAsyncServerFunc("showImage", async (data) => {
+      this.tvm.showImage(data);
+    });
+    this.tvm.endScope();
+  }
+
+  /**
+   * Run generate
+   */
+  async generate() {
+    if (this.requestInProgress) {
+      this.logger("Request in progress, generate request ignored");
+      return;
+    }
+    this.requestInProgress = true;
+    try {
+      await this.asyncInit();
+      const prompt = document.getElementById("inputPrompt").value;
+      const negPrompt = document.getElementById("negativePrompt").value;
+      const schedulerId = document.getElementById("schedulerId").value;
+      const vaeCycle = document.getElementById("vaeCycle").value;
+      await this.pipeline.generate(prompt, negPrompt, this.#getProgressCallback(), schedulerId, vaeCycle);
+    } catch (err) {
+      this.logger("Generate error, " + err.toString());
+      console.log(err.stack);
+      this.reset();
+    }
+    this.requestInProgress = false;
+  }
+
+  /**
+   * Reset the instance;
+   */
+  reset() {
+    this.tvm = undefined;
+    if (this.pipeline !== undefined) {
+      this.pipeline.dispose();
+    }
+    this.pipeline = undefined;
+  }
+}
