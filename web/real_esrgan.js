@@ -56,7 +56,7 @@ class RealESRGANPipeline {
   //TODO: add web ESRGAN generation pipeline
   /**
    * Run generation pipeline.
-   *
+   * @param inputImage Input image.
    * @param prompt Input prompt.
    * @param negPrompt Input negative prompt.
    * @param progressCallback Callback to check progress.
@@ -67,6 +67,7 @@ class RealESRGANPipeline {
    * @param beginRenderVae Begin rendering VAE after skipping these warmup runs.
    */
   async generate(
+    inputImage,
     prompt,
     negPrompt = "",
     progressCallback = undefined,
@@ -83,106 +84,28 @@ class RealESRGANPipeline {
     this.tvm.beginScope();
     // get latents
     const latentShape = [1, 4, 64, 64];
-
-    var unetNumSteps;
-    if (schedulerId == 0) {
-      scheduler = new TVMDPMSolverMultistepScheduler(
-        this.schedulerConsts[0], latentShape, this.tvm, this.device, this.vm);
-      unetNumSteps = this.schedulerConsts[0]["num_steps"];
-    } else {
-      scheduler = new TVMPNDMScheduler(
-        this.schedulerConsts[1], latentShape, this.tvm, this.device, this.vm);
-      unetNumSteps = this.schedulerConsts[1]["num_steps"];
-    }
-    const totalNumSteps = unetNumSteps + 2;
-
-    if (progressCallback !== undefined) {
-      progressCallback("clip", 0, 1, totalNumSteps);
-    }
-
-    const embeddings = this.tvm.withNewScope(() => {
-      let posInputIDs = this.tokenize(prompt);
-      let negInputIDs = this.tokenize(negPrompt);
-      const posEmbeddings = this.clipToTextEmbeddings(
-        posInputIDs, this.clipParams);
-      const negEmbeddings = this.clipToTextEmbeddings(
-        negInputIDs, this.clipParams);
-      // maintain new latents
-      return this.tvm.detachFromCurrentScope(
-        this.concatEmbeddings(negEmbeddings, posEmbeddings)
-      );
-    });
     // use uniform distribution with same variance as normal(0, 1)
     const scale = Math.sqrt(12) / 2;
     let latents = this.tvm.detachFromCurrentScope(
       this.tvm.uniform(latentShape, -scale, scale, this.tvm.webgpu())
     );
     this.tvm.endScope();
-    //---------------------------
-    // Stage 1: UNet + Scheduler
-    //---------------------------
-    if (vaeCycle != -1) {
-      // show first frame
-      this.tvm.withNewScope(() => {
-        const image = this.vaeToImage(latents, this.vaeParams);
-        this.tvm.showImage(this.imageToRGBA(image));
-      });
-      await this.device.sync();
-    }
-    vaeCycle = vaeCycle == -1 ? unetNumSteps : vaeCycle;
-    let lastSync = undefined;
 
-    for (let counter = 0; counter < unetNumSteps; ++counter) {
-      if (progressCallback !== undefined) {
-        progressCallback("unet", counter, unetNumSteps, totalNumSteps);
-      }
-      const timestep = scheduler.timestep[counter];
-      // recycle noisePred, track latents manually
-      const newLatents = this.tvm.withNewScope(() => {
-        this.tvm.attachToCurrentScope(latents);
-        const noisePred = this.unetLatentsToNoisePred(
-          latents, timestep, embeddings, this.unetParams);
-        // maintain new latents
-        return this.tvm.detachFromCurrentScope(
-          scheduler.step(noisePred, latents, counter)
-        );
-      });
-      latents = newLatents;
-      // use skip one sync, although likely not as useful.
-      if (lastSync !== undefined) {
-        await lastSync;
-      }
-      // async event checker
-      lastSync = this.device.sync();
-
-      // Optionally, we can draw intermediate result of VAE.
-      if ((counter + 1) % vaeCycle == 0 &&
-        (counter + 1) != unetNumSteps &&
-        counter >= beginRenderVae) {
-        this.tvm.withNewScope(() => {
-          const image = this.vaeToImage(latents, this.vaeParams);
-          this.tvm.showImage(this.imageToRGBA(image));
-        });
-        await this.device.sync();
-      }
-    }
-    scheduler.dispose();
-    embeddings.dispose();
-    //-----------------------------
-    // Stage 2: VAE and draw image
-    //-----------------------------
-    if (progressCallback !== undefined) {
-      progressCallback("vae", 0, 1, totalNumSteps);
-    }
     this.tvm.withNewScope(() => {
-      const image = this.vaeToImage(latents, this.vaeParams);
-      this.tvm.showImage(this.imageToRGBA(image));
+      const scaledImage = this.scale(latents);
+      const preImage = this.preprocess(scaledImage);
+      const rrdbImage = this.rrdbResNet(preImage, this.rrdbParams);
+      const postImage = this.postprocess(rrdbImage);
+      const outImage = this.unscale(postImage);
+
+      // const image = this.vaeToImage(latents, this.vaeParams);
+      this.tvm.showImage(this.imageToRGBA(outImage));
     });
-    latents.dispose();
+    // latents.dispose();
     await this.device.sync();
-    if (progressCallback !== undefined) {
-      progressCallback("vae", 1, 1, totalNumSteps);
-    }
+    // if (progressCallback !== undefined) {
+    //   progressCallback("vae", 1, 1, totalNumSteps);
+    // }
   }
 
   clearCanvas() {
