@@ -122,7 +122,7 @@ def unscale_image() -> tvm.IRModule:
     #todo: different sizes of images
     def f_unscale_image(A):
         def fcompute(y, x, c):
-            return te.round(A[y, x, c] * 255).astype("uint8")
+            return te.round(A[y, x, c] * 255).astype("uint32")
 
         return te.compute((2560, 1792, 3), fcompute, name="unscale_image")
 
