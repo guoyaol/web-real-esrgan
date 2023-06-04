@@ -2,3 +2,8 @@ __pycache__
 dist/
 .DS_Store
 *.zip
+deploy_mod.py
+input/
+output/
+3rdparty/
+weights/
