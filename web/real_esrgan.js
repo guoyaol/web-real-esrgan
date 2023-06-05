@@ -16,15 +16,15 @@ class RealESRGANPipeline {
       this.vm.getFunction("rrdb")
     );
     this.rrdbParams = this.tvm.detachFromCurrentScope(
-      this.tvm.getParamsFromCache("rrdb", cacheMetadata.clipParamSize)
+      this.tvm.getParamsFromCache("rrdb", cacheMetadata.rrdbParamSize)
     );
 
     this.scale = this.tvm.detachFromCurrentScope(
-      this.vm.getFunction("scale")
+      this.vm.getFunction("scale_image")
     );
 
     this.unscale = this.tvm.detachFromCurrentScope(
-      this.vm.getFunction("unscale")
+      this.vm.getFunction("unscale_image")
     );
 
     this.preprocess = this.tvm.detachFromCurrentScope(
@@ -83,7 +83,7 @@ class RealESRGANPipeline {
     //--------------------------
     this.tvm.beginScope();
     // get latents
-    const latentShape = [1, 3, 640, 448];
+    const latentShape = [640, 448, 3];
     // use uniform distribution with same variance as normal(0, 1)
     const scale = Math.sqrt(12) / 2;
     let latents = this.tvm.detachFromCurrentScope(
@@ -99,7 +99,7 @@ class RealESRGANPipeline {
       const outImage = this.unscale(postImage);
 
       // const image = this.vaeToImage(latents, this.vaeParams);
-      this.tvm.showImage(this.imageToRGBA(outImage));
+      this.tvm.showImage(outImage);
     });
     // latents.dispose();
     await this.device.sync();
