@@ -134,3 +134,26 @@ def unscale_image() -> tvm.IRModule:
         )
         bb.emit_func_output(image)
     return bb.get()
+
+def image_to_rgba() -> tvm.IRModule:
+    from tvm import te
+
+    def f_image_to_rgba(A):
+        def fcompute(y, x):
+            return (
+                A[y, x, 2].astype("uint32")
+                | (A[y, x, 1].astype("uint32") << 8)
+                | (A[y, x, 0].astype("uint32") << 16)
+                | tvm.tir.const(255 << 24, "uint32")
+            )
+
+        return te.compute((2560, 1792), fcompute, name="image_to_rgba")
+
+    bb = relax.BlockBuilder()
+    x = relax.Var("x", R.Tensor([2560, 1792, 3], "uint32"))
+    with bb.function("image_to_rgba", [x]):
+        image = bb.emit(
+            bb.call_te(f_image_to_rgba, x, primfunc_name_hint="tir_image_to_rgba")
+        )
+        bb.emit_func_output(image)
+    return bb.get()

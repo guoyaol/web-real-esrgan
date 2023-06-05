@@ -34,6 +34,10 @@ class RealESRGANPipeline {
     this.postprocess = this.tvm.detachFromCurrentScope(
       this.vm.getFunction("postprocess")
     );
+
+    this.imageToRGBA = this.tvm.detachFromCurrentScope(
+      this.vm.getFunction("image_to_rgba")
+    );
   }
 
   dispose() {
@@ -44,6 +48,7 @@ class RealESRGANPipeline {
     this.unscale.dispose();
     this.preprocess.dispose();
     this.postprocess.dispose();
+    this.imageToRGBA.dispose();
   }
 
   /**
@@ -99,7 +104,7 @@ class RealESRGANPipeline {
       const outImage = this.unscale(postImage);
 
       // const image = this.vaeToImage(latents, this.vaeParams);
-      this.tvm.showImage(outImage);
+      this.tvm.showImage(this.imageToRGBA(outImage));
     });
     // latents.dispose();
     await this.device.sync();

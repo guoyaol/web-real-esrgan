@@ -96,12 +96,15 @@ def trace_models(
     #5. un-scale image
     unscale = trace.unscale_image()
 
+    image_to_rgba = trace.image_to_rgba()
+
     mod = utils.merge_irmodules(
         scale,
         pre_pro,
         rrdb,
         post_pro,
-        unscale
+        unscale,
+        image_to_rgba
     )
     return relax.frontend.detach_params(mod)
 
@@ -111,7 +114,7 @@ def legalize_and_lift_params(
 ) -> tvm.IRModule:
     """First-stage: Legalize ops and trace"""
     model_names = ["rrdb"]
-    entry_funcs = ["scale_image", "preprocess", "rrdb", "postprocess", "unscale_image"]
+    entry_funcs = ["scale_image", "preprocess", "rrdb", "postprocess", "unscale_image", "image_to_rgba"]
 
     mod = relax.pipeline.get_pipeline()(mod)
     mod = relax.transform.DeadCodeElimination(entry_funcs)(mod)
