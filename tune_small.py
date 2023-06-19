@@ -23,7 +23,7 @@ def tune(mod: tvm.IRModule) -> None:
                 session_timeout_sec=50,
             )
         ),
-        work_dir="log_db_tuning_5_small",
+        work_dir="log_db_tuning_1000_small",
         max_trials_global=25000,
         max_trials_per_task=1000,
         strategy=ms.search_strategy.EvolutionarySearch(init_min_unmeasured=10, max_fail_count=20),
