@@ -16,7 +16,7 @@ from tvm import relax
 def _parse_args():
     args = argparse.ArgumentParser()
     args.add_argument("--target", type=str, default="auto")
-    args.add_argument("--db-path", type=str, default="log_db_tuning_1000_nsearch/")
+    args.add_argument("--db-path", type=str, default="log_db_tuning_1000_small/")
     args.add_argument("--model-path", type=str, default="weights/RealESRGAN_x4plus.pth")
     args.add_argument("--artifact-path", type=str, default="dist")
     args.add_argument(
