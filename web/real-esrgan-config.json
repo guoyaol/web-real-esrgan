@@ -1,0 +1,4 @@
+{
+    "wasmUrl": "dist/real_esrgan_webgpu.wasm",
+    "cacheUrl": "web-sd-shards-v1-5/"
+}
