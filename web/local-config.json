@@ -4,6 +4,6 @@
         "dist/scheduler_pndm_consts.json"
     ],
     "wasmUrl": "dist/real_esrgan_webgpu.wasm",
-    "cacheUrl": "web-sd-shards-v1-5/",
+    "cacheUrl": "dist/params",
     "tokenizer": "openai/clip-vit-large-patch14"
 }

@@ -105,9 +105,12 @@ class RealESRGANPipeline {
       const rrdbImage  = this.tvm.uniform(outShape, 0.1, 0.5, this.tvm.webgpu());
       const postImage = this.postprocess(rrdbImage);
       const outImage = this.unscale(postImage);
+      console.log(postImage);
+      const showImage = this.imageToRGBA(outImage);
+      console.log(showImage);
 
       // const image = this.vaeToImage(latents, this.vaeParams);
-      this.tvm.showImage(this.imageToRGBA(outImage));
+      this.tvm.showImage(showImage);
     });
     // latents.dispose();
     await this.device.sync();
