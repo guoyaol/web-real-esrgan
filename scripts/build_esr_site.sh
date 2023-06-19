@@ -16,7 +16,6 @@ cp web/real_esrgan.js site/dist
 cp web/script.js    site/dist
 
 cp dist/real_esrgan_webgpu.wasm site/dist
-cp -R dist/params site/dist
 
 cp dist/tvmjs_runtime.wasi.js site/dist
 cp dist/tvmjs.bundle.js site/dist

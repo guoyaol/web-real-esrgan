@@ -88,7 +88,7 @@ class RealESRGANPipeline {
     //--------------------------
     this.tvm.beginScope();
     // get latents
-    const latentShape = [179, 179, 3];
+    const latentShape = [160, 160, 3];
     // use uniform distribution with same variance as normal(0, 1)
     let latents = this.tvm.detachFromCurrentScope(
       this.tvm.uniform(latentShape, 128, 254, this.tvm.webgpu())
@@ -99,15 +99,15 @@ class RealESRGANPipeline {
       const scaledImage = this.scale(latents);
       const preImage = this.preprocess(scaledImage);
       // console.log(preImage)
-      // const rrdbImage = this.rrdbResNet(preImage, this.rrdbParams);
+      const rrdbImage = this.rrdbResNet(preImage, this.rrdbParams);
       // console.log(rrdbImage)
-      const outShape = [1, 3, 716, 716];
-      const rrdbImage  = this.tvm.uniform(outShape, 0.1, 0.5, this.tvm.webgpu());
+      // const outShape = [1, 3, 716, 716];
+      // const rrdbImage  = this.tvm.uniform(outShape, 0.1, 0.5, this.tvm.webgpu());
       const postImage = this.postprocess(rrdbImage);
       const outImage = this.unscale(postImage);
-      console.log(postImage);
+      // console.log(postImage);
       const showImage = this.imageToRGBA(outImage);
-      console.log(showImage);
+      // console.log(showImage);
 
       // const image = this.vaeToImage(latents, this.vaeParams);
       this.tvm.showImage(showImage);
