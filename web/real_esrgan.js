@@ -60,26 +60,8 @@ class RealESRGANPipeline {
 
   //TODO: add web ESRGAN generation pipeline
   /**
-   * Run generation pipeline.
-   * @param inputImage Input image.
-   * @param prompt Input prompt.
-   * @param negPrompt Input negative prompt.
-   * @param progressCallback Callback to check progress.
-   * @param schedulerId The integer ID of the scheduler to use.
-   * - 0 for multi-step DPM solver,
-   * - 1 for PNDM solver.
-   * @param vaeCycle optionally draw VAE result every cycle iterations.
-   * @param beginRenderVae Begin rendering VAE after skipping these warmup runs.
    */
-  async generate(
-    // inputImage,
-    prompt,
-    negPrompt = "",
-    progressCallback = undefined,
-    schedulerId = 0,
-    vaeCycle = -1,
-    beginRenderVae = 10
-  ) {
+  async generate() {
     // Principle: beginScope/endScope in synchronized blocks,
     // this helps to recycle intermediate memories
     // detach states that needs to go across async boundaries.
@@ -270,11 +252,8 @@ class RealESRGANInstance {
     this.tvm = tvmInstance;
 
     this.tvm.beginScope();
-    this.tvm.registerAsyncServerFunc("generate", async (prompt, schedulerId, vaeCycle) => {
-      document.getElementById("inputPrompt").value = prompt;
-      const negPrompt = "";
-      document.getElementById("negativePrompt").value = "";
-      await this.pipeline.generate(prompt, negPrompt, this.#getProgressCallback(), schedulerId, vaeCycle);
+    this.tvm.registerAsyncServerFunc("generate", async () => {
+      await this.pipeline.generate();
     });
     this.tvm.registerAsyncServerFunc("clearCanvas", async () => {
       this.tvm.clearCanvas();
@@ -296,11 +275,7 @@ class RealESRGANInstance {
     this.requestInProgress = true;
     try {
       await this.asyncInit();
-      const prompt = document.getElementById("inputPrompt").value;
-      const negPrompt = document.getElementById("negativePrompt").value;
-      const schedulerId = document.getElementById("schedulerId").value;
-      const vaeCycle = document.getElementById("vaeCycle").value;
-      await this.pipeline.generate(prompt, negPrompt, this.#getProgressCallback(), schedulerId, vaeCycle);
+      await this.pipeline.generate();
     } catch (err) {
       this.logger("Generate error, " + err.toString());
       console.log(err.stack);
