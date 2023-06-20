@@ -71,12 +71,9 @@ class RealESRGANPipeline {
     //--------------------------
     this.tvm.beginScope();
     // get latents
-    // const latentShape = [160, 160, 3];
-    // // use uniform distribution with same variance as normal(0, 1)
-    // let latents = this.tvm.detachFromCurrentScope(
-    //   this.tvm.uniform(latentShape, 128, 254, this.tvm.webgpu())
-    // );
-    let latents = this.tvm.empty([160, 160, 3], "float32").copyFrom(lowImage);
+    let latents = this.tvm.detachFromCurrentScope(
+      this.tvm.empty([160, 160, 3], "float32", this.tvm.webgpu()).copyFrom(lowImage)
+      );
     this.tvm.endScope();
 
     console.log(latents)
@@ -277,7 +274,7 @@ class RealESRGANInstance {
 
     this.tvm.beginScope();
     this.tvm.registerAsyncServerFunc("generate", async (lowImage) => {
-      this.lowImage = lowImage;
+      // this.lowImage = lowImage;
       await this.pipeline.generate(lowImage);
     });
     this.tvm.registerAsyncServerFunc("clearCanvas", async () => {
@@ -309,7 +306,7 @@ class RealESRGANInstance {
     }
 
     const float32Array = Float32Array.from(rgbArray);
-    this.lowImage = float32Array;
+    // this.lowImage = float32Array;
     console.log(float32Array);
     console.log(float32Array.length); 
     // let a = tvm.empty([2, 3], dtype).copyFrom(data);
@@ -320,7 +317,7 @@ class RealESRGANInstance {
     this.requestInProgress = true;
     try {
       await this.asyncInit();
-      await this.pipeline.generate(this.lowImage);
+      await this.pipeline.generate(float32Array);
     } catch (err) {
       this.logger("Generate error, " + err.toString());
       console.log(err.stack);
