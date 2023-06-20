@@ -1,29 +1,44 @@
-window.onload = function() {
-    const imageUpload = document.getElementById('imageUpload');
-    const canvas = document.getElementById('canvas');
-    const context = canvas.getContext('2d');
+class ImageConverter {
+    constructor() {
+        this.imageUpload = document.getElementById('imageUpload');
+        this.convertButton = document.getElementById('convertButton');
+        this.canvas = document.getElementById('canvas');
+        this.context = this.canvas.getContext('2d');
+        this.img = null;
 
-    imageUpload.addEventListener('change', function() {
+        this.imageUpload.addEventListener('change', (event) => this.loadImage(event));
+        this.convertButton.addEventListener('click', () => this.convertImage());
+    }
+
+    loadImage(event) {
         const reader = new FileReader();
-        reader.onload = function(event) {
-            const img = new Image();
-            img.onload = function() {
-                canvas.width = img.width;
-                canvas.height = img.height;
-                context.drawImage(img, 0, 0, img.width, img.height);
-                let imageData = context.getImageData(0, 0, img.width, img.height);
-                console.log(imageData);
-                for (let i = 0; i < imageData.data.length; i += 4) {
-                    let red = imageData.data[i];
-                    let blue = imageData.data[i + 2];
-                    // swap red and blue
-                    imageData.data[i] = blue;
-                    imageData.data[i + 2] = red;
-                }
-                context.putImageData(imageData, 0, 0);
+        reader.onload = (event) => {
+            this.img = new Image();
+            this.img.onload = () => {
+                this.canvas.width = this.img.width;
+                this.canvas.height = this.img.height;
+                this.context.drawImage(this.img, 0, 0, this.img.width, this.img.height);
+                this.convertButton.disabled = false;
             };
-            img.src = event.target.result;
+            this.img.src = event.target.result;
         };
-        reader.readAsDataURL(this.files[0]);
-    }, false);
+        reader.readAsDataURL(event.target.files[0]);
+    }
+
+    convertImage() {
+        if (!this.img) return;
+        let imageData = this.context.getImageData(0, 0, this.img.width, this.img.height);
+        for (let i = 0; i < imageData.data.length; i += 4) {
+            let red = imageData.data[i];
+            let blue = imageData.data[i + 2];
+            // swap red and blue
+            imageData.data[i] = blue;
+            imageData.data[i + 2] = red;
+        }
+        this.context.putImageData(imageData, 0, 0);
+    }
+}
+
+window.onload = function() {
+    new ImageConverter();
 };
