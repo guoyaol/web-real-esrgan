@@ -2,6 +2,21 @@
   var tvmjsGlobalEnv = tvmjsGlobalEnv || {};
 </script>
 
+<!-- <script type="module">
+  import init, { TokenizerWasm } from "./dist/tokenizers-wasm/tokenizers_wasm.js";
+
+  var initialized = false;
+  async function getTokenizer(name) {
+    if (!initialized) {
+      await init();
+    }
+    const jsonText = await (await fetch("https://huggingface.co/" + name + "/raw/main/tokenizer.json")).text();
+    return new TokenizerWasm(jsonText);
+  }
+
+  tvmjsGlobalEnv.getTokenizer = getTokenizer;
+</script> -->
+
 <script src="dist/real_esrgan.js"></script>
 
 <div>

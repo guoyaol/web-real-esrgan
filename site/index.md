@@ -6,13 +6,13 @@ notitle: true
 
 
 
-### Demo
+<!-- ### Demo
 
-{% include real_esrgan.html %}
+{% include real_esrgan.html %} -->
 
-<!-- ### Script
+### Script
 
-{% include ref.html %} -->
+{% include ref.html %}
 
 
 ### Notes

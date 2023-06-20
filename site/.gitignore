@@ -1,5 +1,6 @@
 dist
 stable-diffusion-config.json
-_includes/stable_diffusion.html
+_includes
 _site
 real_esrgan-config.json
+_inlcudes
