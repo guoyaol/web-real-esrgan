@@ -60,8 +60,9 @@ class RealESRGANPipeline {
 
   //TODO: add web ESRGAN generation pipeline
   /**
+   * @param lowImage Begin rendering VAE after skipping these warmup runs.
    */
-  async generate() {
+  async generate(lowImage) {
     // Principle: beginScope/endScope in synchronized blocks,
     // this helps to recycle intermediate memories
     // detach states that needs to go across async boundaries.
@@ -70,12 +71,15 @@ class RealESRGANPipeline {
     //--------------------------
     this.tvm.beginScope();
     // get latents
-    const latentShape = [160, 160, 3];
-    // use uniform distribution with same variance as normal(0, 1)
-    let latents = this.tvm.detachFromCurrentScope(
-      this.tvm.uniform(latentShape, 128, 254, this.tvm.webgpu())
-    );
+    // const latentShape = [160, 160, 3];
+    // // use uniform distribution with same variance as normal(0, 1)
+    // let latents = this.tvm.detachFromCurrentScope(
+    //   this.tvm.uniform(latentShape, 128, 254, this.tvm.webgpu())
+    // );
+    let latents = this.tvm.empty([160, 160, 3], "float32").copyFrom(lowImage);
     this.tvm.endScope();
+
+    console.log(latents)
 
     this.tvm.withNewScope(() => {
       const scaledImage = this.scale(latents);
@@ -272,8 +276,9 @@ class RealESRGANInstance {
     this.tvm = tvmInstance;
 
     this.tvm.beginScope();
-    this.tvm.registerAsyncServerFunc("generate", async () => {
-      await this.pipeline.generate();
+    this.tvm.registerAsyncServerFunc("generate", async (lowImage) => {
+      this.lowImage = lowImage;
+      await this.pipeline.generate(lowImage);
     });
     this.tvm.registerAsyncServerFunc("clearCanvas", async () => {
       this.tvm.clearCanvas();
@@ -292,7 +297,19 @@ class RealESRGANInstance {
     this.context.drawImage(this.img, 0, 0, this.img.width, this.img.height);
     let imageData = this.context.getImageData(0, 0, this.img.width, this.img.height);
     console.log(imageData);
-    const float32Array = Float32Array.from(imageData.data);
+    const unit8Array = imageData.data;
+
+    const rgbArray = [];
+
+    for (let i = 0; i < unit8Array.length; i += 4) {
+        rgbArray.push(unit8Array[i]);     // R value
+        rgbArray.push(unit8Array[i + 1]); // G value
+        rgbArray.push(unit8Array[i + 2]); // B value
+        // skipping rgbaArray[i + 3] because that's the A value
+    }
+
+    const float32Array = Float32Array.from(rgbArray);
+    this.lowImage = float32Array;
     console.log(float32Array);
     console.log(float32Array.length); 
     // let a = tvm.empty([2, 3], dtype).copyFrom(data);
@@ -303,7 +320,7 @@ class RealESRGANInstance {
     this.requestInProgress = true;
     try {
       await this.asyncInit();
-      await this.pipeline.generate();
+      await this.pipeline.generate(this.lowImage);
     } catch (err) {
       this.logger("Generate error, " + err.toString());
       console.log(err.stack);
