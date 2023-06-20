@@ -113,7 +113,24 @@ class RealESRGANInstance {
     this.config = undefined;
     this.generateInProgress = false;
     this.logger = console.log;
+    this.imageUpload = document.getElementById('imageUpload');
+    this.convertButton = document.getElementById('convertButton');
+    this.canvas = document.getElementById('canvas');
+    this.img = null;
   }
+
+  loadImage(event) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        this.img = new Image();
+        this.img.onload = () => {
+          this.convertButton.disabled = false;
+        };
+        this.img.src = event.target.result;
+    };
+    reader.readAsDataURL(event.target.files[0]);
+  }
+
   /**
    * Initialize TVM
    * @param wasmUrl URL to wasm source.
@@ -298,6 +315,10 @@ class RealESRGANInstance {
 
 
 localRealESRGANInst = new RealESRGANInstance();
+
+tvmjsGlobalEnv.loadImage = function (event) {
+  localRealESRGANInst.loadImage(event);
+};
 
 tvmjsGlobalEnv.asyncOnGenerate = async function () {
   await localRealESRGANInst.generate();
