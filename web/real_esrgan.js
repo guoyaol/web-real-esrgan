@@ -292,6 +292,10 @@ class RealESRGANInstance {
     this.context.drawImage(this.img, 0, 0, this.img.width, this.img.height);
     let imageData = this.context.getImageData(0, 0, this.img.width, this.img.height);
     console.log(imageData);
+    const float32Array = Float32Array.from(imageData.data);
+    console.log(float32Array);
+    console.log(float32Array.length); 
+    // let a = tvm.empty([2, 3], dtype).copyFrom(data);
     if (this.requestInProgress) {
       this.logger("Request in progress, generate request ignored");
       return;
