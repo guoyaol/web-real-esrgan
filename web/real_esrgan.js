@@ -6,7 +6,7 @@ class RealESRGANPipeline {
     this.tvm = tvm;
 
     this.device = this.tvm.webgpu();
-    this.tvm.bindCanvas(document.getElementById("canvas"));
+    this.tvm.bindCanvas(document.getElementById("tcanvas"));
     // VM functions
     this.vm = this.tvm.detachFromCurrentScope(
       this.tvm.createVirtualMachine(this.device)
@@ -116,6 +116,7 @@ class RealESRGANInstance {
     this.imageUpload = document.getElementById('imageUpload');
     this.convertButton = document.getElementById('convertButton');
     this.canvas = document.getElementById('canvas');
+    this.context = this.canvas.getContext('2d');
     this.img = null;
   }
 
@@ -124,6 +125,8 @@ class RealESRGANInstance {
     reader.onload = (event) => {
         this.img = new Image();
         this.img.onload = () => {
+          this.canvas.width = this.img.width;
+          this.canvas.height = this.img.height;
           this.convertButton.disabled = false;
         };
         this.img.src = event.target.result;
@@ -285,6 +288,10 @@ class RealESRGANInstance {
    * Run generate
    */
   async generate() {
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.context.drawImage(this.img, 0, 0, this.img.width, this.img.height);
+    let imageData = this.context.getImageData(0, 0, this.img.width, this.img.height);
+    console.log(imageData);
     if (this.requestInProgress) {
       this.logger("Request in progress, generate request ignored");
       return;
