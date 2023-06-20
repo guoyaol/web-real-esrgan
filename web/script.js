@@ -5,9 +5,6 @@ class ImageConverter {
         this.canvas = document.getElementById('canvas');
         this.context = this.canvas.getContext('2d');
         this.img = null;
-
-        this.imageUpload.addEventListener('change', (event) => this.loadImage(event));
-        this.convertButton.addEventListener('click', () => this.convertImage());
     }
 
     loadImage(event) {
@@ -17,7 +14,6 @@ class ImageConverter {
             this.img.onload = () => {
                 this.canvas.width = this.img.width;
                 this.canvas.height = this.img.height;
-                this.context.drawImage(this.img, 0, 0, this.img.width, this.img.height);
                 this.convertButton.disabled = false;
             };
             this.img.src = event.target.result;
@@ -27,6 +23,8 @@ class ImageConverter {
 
     convertImage() {
         if (!this.img) return;
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.context.drawImage(this.img, 0, 0, this.img.width, this.img.height);
         let imageData = this.context.getImageData(0, 0, this.img.width, this.img.height);
         for (let i = 0; i < imageData.data.length; i += 4) {
             let red = imageData.data[i];
@@ -40,5 +38,5 @@ class ImageConverter {
 }
 
 window.onload = function() {
-    new ImageConverter();
+    window.imageConverter = new ImageConverter();
 };

@@ -5,8 +5,8 @@
 </head>
 <body>
     <h1>RGB to BGR Conversion</h1>
-    <input type="file" id="imageUpload" accept="image/*" />
-    <button id="convertButton" disabled>Convert Image</button>
+    <input type="file" id="imageUpload" accept="image/*" onchange="window.imageConverter.loadImage(event)" />
+    <button id="convertButton" disabled onclick="window.imageConverter.convertImage()">Convert Image</button>
     <canvas id="canvas"></canvas>
 
     <script src="dist/script.js"></script>
