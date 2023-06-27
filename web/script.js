@@ -26,6 +26,11 @@ class ImageConverter {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.context.drawImage(this.img, 0, 0, this.img.width, this.img.height);
         let imageData = this.context.getImageData(0, 0, this.img.width, this.img.height);
+        console.log(imageData);
+        //convert imageData to float32
+        const float32Array = Float32Array.from(imageData);
+        console.log(float32Array);
+
         for (let i = 0; i < imageData.data.length; i += 4) {
             let red = imageData.data[i];
             let blue = imageData.data[i + 2];
