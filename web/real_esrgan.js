@@ -115,7 +115,6 @@ class RealESRGANInstance {
     this.generateInProgress = false;
     this.logger = console.log;
     this.imageUpload = document.getElementById('imageUpload');
-    this.convertButton = document.getElementById('convertButton');
     this.canvas = document.getElementById('canvas');
     this.context = this.canvas.getContext('2d');
     this.img = null;
@@ -129,7 +128,6 @@ class RealESRGANInstance {
         this.img.onload = () => {
           this.canvas.width = this.img.width;
           this.canvas.height = this.img.height;
-          this.convertButton.disabled = false;
         };
         this.img.src = event.target.result;
     };
