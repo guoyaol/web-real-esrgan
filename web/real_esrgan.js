@@ -121,6 +121,7 @@ class RealESRGANInstance {
     this.img = null;
   }
 
+  //TODO: remove from esrgan
   loadImage(event) {
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -146,6 +147,7 @@ class RealESRGANInstance {
       return;
     }
 
+    //TODO: not important
     if (document.getElementById("log") !== undefined) {
       this.logger = function (message) {
         console.log(message);
@@ -306,10 +308,7 @@ class RealESRGANInstance {
     }
 
     const float32Array = Float32Array.from(rgbArray);
-    // this.lowImage = float32Array;
-    console.log(float32Array);
-    console.log(float32Array.length); 
-    // let a = tvm.empty([2, 3], dtype).copyFrom(data);
+
     if (this.requestInProgress) {
       this.logger("Request in progress, generate request ignored");
       return;
