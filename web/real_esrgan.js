@@ -145,16 +145,6 @@ class RealESRGANInstance {
       return;
     }
 
-    //TODO: not important
-    // if (document.getElementById("log") !== undefined) {
-    //   this.logger = function (message) {
-    //     console.log(message);
-    //     const d = document.createElement("div");
-    //     d.innerHTML = message;
-    //     document.getElementById("log").appendChild(d);
-    //   };
-    // }
-
     const wasmSource = await (
       await fetch(wasmUrl)
     ).arrayBuffer();
