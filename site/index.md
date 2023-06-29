@@ -10,9 +10,7 @@ notitle: true
 
 {% include real_esrgan.html %}
 
-<!-- ### Script
 
-{% include ref.html %} -->
 
 
 ### Notes
