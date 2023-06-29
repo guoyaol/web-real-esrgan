@@ -13,6 +13,7 @@ cp $1 site/real-esrgan-config.json
 echo "Copy files..."
 cp web/real_esrgan.html site/_includes
 cp web/real_esrgan.js site/dist
+cp web/package.js site/dist
 cp web/script.js    site/dist
 
 cp dist/real_esrgan_webgpu.wasm site/dist
