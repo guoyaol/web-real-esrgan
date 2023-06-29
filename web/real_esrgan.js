@@ -230,28 +230,6 @@ class RealESRGANInstance {
     this.config = await (await fetch("real-esrgan-config.json")).json();
   }
 
-  /**
-   * Function to create progress callback tracker.
-   * @returns A progress callback tracker.
-   */
-  #getProgressCallback() {
-    const tstart = performance.now();
-    function progressCallback(stage, counter, numSteps, totalNumSteps) {
-      const timeElapsed = (performance.now() - tstart) / 1000;
-      let text = "Generating ... at stage " + stage;
-      if (stage == "unet") {
-        counter += 1;
-        text += " step [" + counter + "/" + numSteps + "]"
-      }
-      if (stage == "vae") {
-        counter = totalNumSteps;
-      }
-      text += ", " + Math.ceil(timeElapsed) + " secs elapsed.";
-      document.getElementById("progress-tracker-label").innerHTML = text;
-      document.getElementById("progress-tracker-progress").value = (counter / totalNumSteps) * 100;
-    }
-    return progressCallback;
-  }
 
   /**
    * Async initialize instance.
