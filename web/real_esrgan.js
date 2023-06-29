@@ -173,19 +173,12 @@ class RealESRGANInstance {
         } else {
           label += " - " + output.adapterInfo.vendor;
         }
-        document.getElementById(
-          "gpu-tracker-label").innerHTML = ("Initialize GPU device: " + label);
         tvm.initWebGPU(output.device);
       } else {
-        document.getElementById(
-          "gpu-tracker-label").innerHTML = "This browser env do not support WebGPU";
         this.reset();
         throw Error("This browser env do not support WebGPU");
       }
     } catch (err) {
-      document.getElementById("gpu-tracker-label").innerHTML = (
-        "Find an error initializing the WebGPU device " + err.toString()
-      );
       console.log(err.stack);
       this.reset();
       throw Error("Find an error initializing WebGPU: " + err.toString());
@@ -193,8 +186,6 @@ class RealESRGANInstance {
 
     this.tvm = tvm;
     function initProgressCallback(report) {
-      document.getElementById("progress-tracker-label").innerHTML = report.text;
-      document.getElementById("progress-tracker-progress").value = report.progress * 100;
     }
     tvm.registerInitProgressCallback(initProgressCallback);
     if (!cacheUrl.startsWith("http")) {
@@ -271,7 +262,7 @@ class RealESRGANInstance {
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.context.drawImage(this.img, 0, 0, this.img.width, this.img.height);
     let imageData = this.context.getImageData(0, 0, this.img.width, this.img.height);
-    console.log(imageData);
+
     const unit8Array = imageData.data;
 
     const rgbArray = [];
