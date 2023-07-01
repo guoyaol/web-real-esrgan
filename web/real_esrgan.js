@@ -111,7 +111,6 @@ class RealESRGANInstance {
   constructor() {
     this.tvm = undefined;
     this.pipeline = undefined;
-    this.config = undefined;
     this.generateInProgress = false;
     this.logger = console.log;
     this.imageUpload = document.getElementById('imageUpload');
@@ -201,13 +200,6 @@ class RealESRGANInstance {
     await this.pipeline.asyncLoadWebGPUPiplines();
   }
 
-  /**
-   * Async initialize config
-   */
-  async #asyncInitConfig() {
-    if (this.config !== undefined) return;
-    this.config = await (await fetch("real-esrgan-config.json")).json();
-  }
 
 
   /**
@@ -215,7 +207,6 @@ class RealESRGANInstance {
    */
   async asyncInit() {
     if (this.pipeline !== undefined) return;
-    await this.#asyncInitConfig();
     await this.#asyncInitTVM("dist/real_esrgan_webgpu.wasm", "web-eargan-shards/");
     await this.#asyncInitPipeline();
   }
