@@ -58,7 +58,6 @@ class RealESRGANPipeline {
     await this.tvm.asyncLoadWebGPUPiplines(this.vm.getInternalModule());
   }
 
-  //TODO: add web ESRGAN generation pipeline
   /**
    * @param lowImage Begin rendering VAE after skipping these warmup runs.
    */
@@ -120,7 +119,6 @@ class RealESRGANInstance {
     this.imgdata = null
   }
 
-  //TODO: remove from esrgan
   loadImage(input_img) {
     this.imgdata = input_img;
     console.log("loaded into class!")
@@ -186,8 +184,7 @@ class RealESRGANInstance {
       throw Error("asyncInitTVM is not called");
     }
     if (this.pipeline !== undefined) return;
-    //TODO: delete tokenizer
-    // const tokenizer = await tvmjsGlobalEnv.getTokenizer(tokenizerName);
+
     this.pipeline = this.tvm.withNewScope(() => {
       return new RealESRGANPipeline(this.tvm, this.tvm.cacheMetadata);
     });

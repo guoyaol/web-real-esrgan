@@ -1,5 +1,3 @@
-//TODO: how to imoport from src/RealEsrgan.js?
-
 var loadedImageData;
 let localRealESRGANInst = new RealESRGANInstance();
 
@@ -7,7 +5,6 @@ document.getElementById('inputImage').addEventListener('change', function (event
     loadImageData(event.target.files[0]).then(imageData => {
         loadedImageData = imageData;
 
-        // Now that we've loaded the image data, we can use the loadedImageData variable.
         useLoadedImageData();
     });
 });
@@ -32,20 +29,11 @@ function loadImageData(file) {
     });
 }
 
-// This is a function in the global scope that uses loadedImageData.
 function useLoadedImageData() {
     console.log(loadedImageData);
     localRealESRGANInst.loadImage(loadedImageData); 
-    // Here, you can add any other code that uses loadedImageData.
-    // Because this function is only called after an image has been loaded,
-    // you can be sure that loadedImageData will not be undefined.
 }
 
-  
-
-// tvmjsGlobalEnv.loadImage = function (event) {
-// localRealESRGANInst.loadImage(event);
-// };
 
 tvmjsGlobalEnv.asyncOnGenerate = async function () {
 await localRealESRGANInst.generate();
