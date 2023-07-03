@@ -202,30 +202,30 @@ class RealESRGANInstance {
     await this.#asyncInitPipeline();
   }
 
-  /**
-   * Async initialize
-   *
-   * @param tvm The tvm instance.
-   */
-  async asyncInitOnRPCServerLoad(tvmInstance) {
-    if (this.tvm !== undefined) {
-      throw Error("Cannot reuse a loaded instance for rpc");
-    }
-    this.tvm = tvmInstance;
+  // /**
+  //  * Async initialize
+  //  *
+  //  * @param tvm The tvm instance.
+  //  */
+  // async asyncInitOnRPCServerLoad(tvmInstance) {
+  //   if (this.tvm !== undefined) {
+  //     throw Error("Cannot reuse a loaded instance for rpc");
+  //   }
+  //   this.tvm = tvmInstance;
 
-    this.tvm.beginScope();
-    this.tvm.registerAsyncServerFunc("generate", async (lowImage) => {
-      // this.lowImage = lowImage;
-      await this.pipeline.generate(lowImage);
-    });
-    this.tvm.registerAsyncServerFunc("clearCanvas", async () => {
-      this.tvm.clearCanvas();
-    });
-    this.tvm.registerAsyncServerFunc("showImage", async (data) => {
-      this.tvm.showImage(data);
-    });
-    this.tvm.endScope();
-  }
+  //   this.tvm.beginScope();
+  //   this.tvm.registerAsyncServerFunc("generate", async (lowImage) => {
+  //     // this.lowImage = lowImage;
+  //     await this.pipeline.generate(lowImage);
+  //   });
+  //   this.tvm.registerAsyncServerFunc("clearCanvas", async () => {
+  //     this.tvm.clearCanvas();
+  //   });
+  //   this.tvm.registerAsyncServerFunc("showImage", async (data) => {
+  //     this.tvm.showImage(data);
+  //   });
+  //   this.tvm.endScope();
+  // }
 
   /**
    * Run generate
