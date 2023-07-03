@@ -285,7 +285,7 @@ class RealESRGANInstance {
   }
 }
 
-module.exports = {
-    RealESRGANPipeline,
-    RealESRGANInstance
-  };
+// module.exports = {
+//     RealESRGANPipeline,
+//     RealESRGANInstance
+//   };

@@ -1,6 +1,6 @@
 //TODO: how to imoport from src/RealEsrgan.js?
   
-localRealESRGANInst = new RealESRGANInstance();
+let localRealESRGANInst = new RealESRGANInstance();
 
 tvmjsGlobalEnv.loadImage = function (event) {
 localRealESRGANInst.loadImage(event);
