@@ -111,9 +111,11 @@ class RealESRGANInstance {
   constructor() {
     this.tvm = undefined;
     this.pipeline = undefined;
+    this.config = undefined;
     this.generateInProgress = false;
     this.logger = console.log;
     this.imageUpload = document.getElementById('imageUpload');
+    this.convertButton = document.getElementById('convertButton');
     this.canvas = document.getElementById('canvas');
     this.context = this.canvas.getContext('2d');
     this.img = null;
@@ -127,6 +129,7 @@ class RealESRGANInstance {
         this.img.onload = () => {
           this.canvas.width = this.img.width;
           this.canvas.height = this.img.height;
+          this.convertButton.disabled = false;
         };
         this.img.src = event.target.result;
     };
@@ -142,6 +145,16 @@ class RealESRGANInstance {
   async #asyncInitTVM(wasmUrl, cacheUrl) {
     if (this.tvm !== undefined) {
       return;
+    }
+
+    //TODO: not important
+    if (document.getElementById("log") !== undefined) {
+      this.logger = function (message) {
+        console.log(message);
+        const d = document.createElement("div");
+        d.innerHTML = message;
+        document.getElementById("log").appendChild(d);
+      };
     }
 
     const wasmSource = await (
@@ -162,12 +175,19 @@ class RealESRGANInstance {
         } else {
           label += " - " + output.adapterInfo.vendor;
         }
+        document.getElementById(
+          "gpu-tracker-label").innerHTML = ("Initialize GPU device: " + label);
         tvm.initWebGPU(output.device);
       } else {
+        document.getElementById(
+          "gpu-tracker-label").innerHTML = "This browser env do not support WebGPU";
         this.reset();
         throw Error("This browser env do not support WebGPU");
       }
     } catch (err) {
+      document.getElementById("gpu-tracker-label").innerHTML = (
+        "Find an error initializing the WebGPU device " + err.toString()
+      );
       console.log(err.stack);
       this.reset();
       throw Error("Find an error initializing WebGPU: " + err.toString());
@@ -175,6 +195,8 @@ class RealESRGANInstance {
 
     this.tvm = tvm;
     function initProgressCallback(report) {
+      document.getElementById("progress-tracker-label").innerHTML = report.text;
+      document.getElementById("progress-tracker-progress").value = report.progress * 100;
     }
     tvm.registerInitProgressCallback(initProgressCallback);
     if (!cacheUrl.startsWith("http")) {
@@ -200,6 +222,13 @@ class RealESRGANInstance {
     await this.pipeline.asyncLoadWebGPUPiplines();
   }
 
+  /**
+   * Async initialize config
+   */
+  async #asyncInitConfig() {
+    if (this.config !== undefined) return;
+    this.config = await (await fetch("real-esrgan-config.json")).json();
+  }
 
 
   /**
@@ -207,7 +236,8 @@ class RealESRGANInstance {
    */
   async asyncInit() {
     if (this.pipeline !== undefined) return;
-    await this.#asyncInitTVM("dist/real_esrgan_webgpu.wasm", "web-eargan-shards/");
+    await this.#asyncInitConfig();
+    await this.#asyncInitTVM(this.config.wasmUrl, this.config.cacheUrl);
     await this.#asyncInitPipeline();
   }
 
@@ -243,7 +273,7 @@ class RealESRGANInstance {
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.context.drawImage(this.img, 0, 0, this.img.width, this.img.height);
     let imageData = this.context.getImageData(0, 0, this.img.width, this.img.height);
-
+    console.log(imageData);
     const unit8Array = imageData.data;
 
     const rgbArray = [];
