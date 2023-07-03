@@ -39,7 +39,7 @@ tvmjsGlobalEnv.asyncOnGenerate = async function () {
 await localRealESRGANInst.generate();
 };
 
-tvmjsGlobalEnv.asyncOnRPCServerLoad = async function (tvm) {
-const inst = new RealESRGANInstance();
-await inst.asyncInitOnRPCServerLoad(tvm);
-};
+// tvmjsGlobalEnv.asyncOnRPCServerLoad = async function (tvm) {
+// const inst = new RealESRGANInstance();
+// await inst.asyncInitOnRPCServerLoad(tvm);
+// };
