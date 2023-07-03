@@ -117,20 +117,14 @@ class RealESRGANInstance {
     this.canvas = document.getElementById('canvas');
     this.context = this.canvas.getContext('2d');
     this.img = null;
+    this.imgdata = null
   }
 
   //TODO: remove from esrgan
-  loadImage(event) {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        this.img = new Image();
-        this.img.onload = () => {
-          this.canvas.width = this.img.width;
-          this.canvas.height = this.img.height;
-        };
-        this.img.src = event.target.result;
-    };
-    reader.readAsDataURL(event.target.files[0]);
+  loadImage(input_img) {
+    this.imgdata = input_img;
+    console.log("loaded into class!")
+    console.log(this.imgdata)
   }
 
   /**
@@ -240,9 +234,13 @@ class RealESRGANInstance {
    * Run generate
    */
   async generate() {
-    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.context.drawImage(this.img, 0, 0, this.img.width, this.img.height);
-    let imageData = this.context.getImageData(0, 0, this.img.width, this.img.height);
+    // this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    // this.context.drawImage(this.img, 0, 0, this.img.width, this.img.height);
+    // let imageData = this.context.getImageData(0, 0, this.img.width, this.img.height);
+    let imageData = this.imgdata;
+
+    console.log("I want imageData")
+    console.log(imageData)
 
     const unit8Array = imageData.data;
 
