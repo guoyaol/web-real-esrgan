@@ -1,5 +1,10 @@
 var loadedImageData;
-let localRealESRGANInst = new RealESRGANInstance();
+//TODO: how to import tvmjs/ bundle tvmjs into real-esrgan?
+require('./node_modules/real-esrgan/dist/tvmjs_runtime.wasi.js');
+require('./node_modules/real-esrgan/dist/tvmjs.bundle.js');
+import * as esr from './node_modules/real-esrgan/src/RealEsrgan.js';
+
+let localRealESRGANInst = new esr.RealESRGANInstance();
 
 document.getElementById('inputImage').addEventListener('change', function (event) {
     loadImageData(event.target.files[0]).then(imageData => {
