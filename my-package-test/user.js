@@ -1,4 +1,6 @@
 var loadedImageData;
+
+//Step1: Instantiation
 let localRealESRGANInst = new RealESRGANInstance();
 
 document.getElementById('inputImage').addEventListener('change', function (event) {
@@ -29,12 +31,14 @@ function loadImageData(file) {
     });
 }
 
+//Step2: Load image into the instance
 function useLoadedImageData() {
     console.log(loadedImageData);
     localRealESRGANInst.loadImage(loadedImageData); 
 }
 
 
+//Step3: Generate super resolution image
 tvmjsGlobalEnv.asyncOnGenerate = async function () {
 await localRealESRGANInst.generate();
 };
