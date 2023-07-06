@@ -198,7 +198,7 @@ class RealESRGANInstance {
    */
   async asyncInit() {
     if (this.pipeline !== undefined) return;
-    await this.#asyncInitTVM("node_modules/real-esrgan/dist/real_esrgan_webgpu.wasm", "web-eargan-shards/");
+    await this.#asyncInitTVM("node_modules/real-esrgan/dist/real_esrgan_webgpu.wasm", "node_modules/real-esrgan/web-eargan-shards/");
     await this.#asyncInitPipeline();
   }
 
