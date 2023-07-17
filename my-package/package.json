@@ -3,10 +3,19 @@
   "version": "1.0.0",
   "description": "Your description here",
   "main": "src/RealESRGAN.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rollup -c"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.2",
+    "@rollup/plugin-node-resolve": "^15.1.0",
+    "rollup": "^3.26.2",
+    "rollup-plugin-peer-deps-external": "^2.2.4",
+    "tvmjs": "file:/Users/guoyaoli/tvm_work/web-real-esrgan/3rdparty/tvm/web"
+  }
 }

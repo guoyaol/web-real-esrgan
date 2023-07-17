@@ -1,3 +1,4 @@
+import * as tvmjs from "tvmjs";
 class RealESRGANPipeline {
   constructor(tvm, cacheMetadata) {
     if (cacheMetadata == undefined) {

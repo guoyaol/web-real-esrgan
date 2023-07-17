@@ -1,8 +1,8 @@
 var loadedImageData;
 //TODO: how to import tvmjs/ bundle tvmjs into real-esrgan?
-require('./node_modules/real-esrgan/dist/tvmjs_runtime.wasi.js');
-require('./node_modules/real-esrgan/dist/tvmjs.bundle.js');
-import * as esr from './node_modules/real-esrgan/src/RealEsrgan.js';
+// require('./node_modules/real-esrgan/dist/tvmjs_runtime.wasi.js');
+// require('./node_modules/real-esrgan/dist/tvmjs.bundle.js');
+import * as esr from 'real-esrgan';
 
 let localRealESRGANInst = new esr.RealESRGANInstance();
 
